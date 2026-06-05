@@ -3053,62 +3053,51 @@
         }
 
         // --- SISTEM LOAD DATA DENGAN API ---
-        async function loadDataFromServer(userId, pin = "") {
+async function loadDataFromServer(userId, pin = "") {
+    try {
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'load_data',
+                userId: userId,
+                pinCode: pin
+            })
+        });
+        if (!response.ok) return null;
+        const textData = await response.text();
+        if (!textData || textData.trim() === "" || textData.trim().startsWith("<")) return null;
+        const result = JSON.parse(textData);
+        
+        if (result.status === 'error' && result.message === 'BANNED') {
+            document.getElementById('banned-screen').classList.remove('hidden');
+            return null;
+        } else if (result.status === 'error' && result.message === 'User not found') {
+            return { error: 'not_found' };
+        } else if (result.status === 'wrong_pin') {
+            return { error: 'wrong_pin' };
+        } else if (result.status === 'error' && result.message === 'TOO_MANY_ATTEMPTS') {
+            return { error: 'too_many' };
+        } else if (result.status === 'success') {
+            document.getElementById('banned-screen').classList.add('hidden');
+            if (result.server_time) serverTimeOffset = result.server_time - Date.now();
+            ingestRefCfg(result);
             try {
-                // [FIX BUG8] PIN dikirim via POST body — tidak muncul di URL/server log
-                const fetchUrl = `${API_URL}?action=load_data&user_id=${userId}&_t=${Date.now()}`;
-                const fetchOpts = pin
-                    ? { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({pin}) }
-                    : {};
-
-                const response = await fetch(fetchUrl, fetchOpts);
-                if (!response.ok) {
-                    return null;
-                }
-                const textData = await response.text();
-                if (!textData || textData.trim() === "" || textData.trim().startsWith("<")) {
-                    return null;
-                }
-                const result = JSON.parse(textData);
-                
-                if (result.status === 'error' && result.message === 'BANNED') {
-                    document.getElementById('banned-screen').classList.remove('hidden');
-                    return null;
-                } else if (result.status === 'error' && result.message === 'User not found') {
-                    return { error: 'not_found' }; // FITUR BARU: Tangkap error user tidak ditemukan
-                } else if (result.status === 'wrong_pin') {
-                    return { error: 'wrong_pin' }; // Kasih tahu form login bahwa PIN salah
-                } else if (result.status === 'captcha_required') {
-                    return { error: 'captcha_required' }; // perlu verifikasi Turnstile (setelah beberapa kali salah PIN)
-                } else if (result.status === 'error' && result.message === 'TOO_MANY_ATTEMPTS') {
-                    return { error: 'too_many' };
-                } else if (result.status === 'success') {
-                    document.getElementById('banned-screen').classList.add('hidden');
-                    
-                    // [CRITICAL PATCH] Injeksi perhitungan selisih waktu server (Anti-Cheat Waktu)
-                    if (result.server_time) {
-                        serverTimeOffset = result.server_time - Date.now();
-                    }
-                    ingestRefCfg(result); // sinkron persen reward referral dari server
-
-                    // [SURVEY AKUISISI] Tandai kalau user belum jawab sumber, lalu jadwalkan tanya.
-                    try {
-                        window.NM_NEEDS_SOURCE = !!result.needs_source;
-                        if (window.NM_NEEDS_SOURCE) setTimeout(function () { try { window.maybeAskSource && window.maybeAskSource(); } catch (e) {} }, 800);
-                    } catch (e) {}
-
-                    return {
-                        appData: result.appData,
-                        needs_pin: result.require_pin_setup || false,
-                        global_settings: result.global_settings
-                    };
-                }
-                return null;
-            } catch (error) {
-                console.log("Sinkronisasi server dilewati.");
-                return null;
-            }
+                window.NM_NEEDS_SOURCE = !!result.needs_source;
+                if (window.NM_NEEDS_SOURCE) setTimeout(() => { try { window.maybeAskSource?.(); } catch(e) {} }, 800);
+            } catch(e) {}
+            return {
+                appData: result.appData,
+                needs_pin: result.require_pin_setup || false,
+                global_settings: result.global_settings
+            };
         }
+        return null;
+    } catch (error) {
+        console.log("Sinkronisasi server dilewati.", error);
+        return null;
+    }
+}
 
         function getLocalData() {
             let savedData = localStorage.getItem(STORAGE_KEY);
