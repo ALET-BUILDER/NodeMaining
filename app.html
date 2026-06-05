@@ -2253,11 +2253,9 @@
 
     <script>
         // --- KONFIGURASI URL API ---
-        // Auto-detect: pakai path relatif agar bisa deploy di Vercel/Railway tanpa edit
+        // Path relatif — bekerja di localhost maupun Railway/Render tanpa edit
+        const API_URL = '/api';
         const _host = window.location.origin;
-        const API_URL = _host.includes('localhost') || _host.includes('127.0.0.1')
-            ? '/api.php'
-            : (_host + '/api.php');
 
         // [SISTEM BARU] Konfigurasi reward referral — diisi dari server (load_data)
         // agar teks & estimasi di UI SELALU sinkron dgn persen yang diatur admin.
@@ -3832,7 +3830,7 @@
                 btn.disabled = true;
             }
 
-            fetch('api.php?action=claim_checkin', {
+            fetch('/api?action=claim_checkin', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: appData.userId })
@@ -6962,7 +6960,7 @@
             var m = document.getElementById('source-modal');
             if (m) { m.classList.add('hidden'); m.classList.remove('flex'); }
             try {
-                var api = window.API_URL || 'api.php';
+                var api = window.API_URL || '/api';
                 var uid = (window.appData && window.appData.userId) || '';
                 fetch(api, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'set_acquisition_source', userId: uid, source: src }) })
                     .then(function (r) { return r.json(); })
