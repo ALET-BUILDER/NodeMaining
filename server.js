@@ -28,7 +28,7 @@ try {
   process.exit(1);
 }
 
-// Create tables
+// Create tables (LENGKAP dengan semua field yang dibutuhkan)
 try {
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
@@ -41,6 +41,13 @@ try {
       is_verified INTEGER DEFAULT 0,
       is_banned INTEGER DEFAULT 0,
       account_tier TEXT DEFAULT 'trial',
+      referral_code TEXT,
+      referred_by TEXT,
+      referral_count INTEGER DEFAULT 0,
+      valid_referral_count INTEGER DEFAULT 0,
+      checkin_streak INTEGER DEFAULT 0,
+      last_checkin TEXT,
+      upgrade_date INTEGER,
       created_at INTEGER DEFAULT (strftime('%s', 'now')),
       last_active INTEGER DEFAULT (strftime('%s', 'now'))
     );
@@ -52,7 +59,21 @@ try {
       type TEXT,
       status TEXT,
       label TEXT,
-      created_at INTEGER DEFAULT (strftime('%s', 'now'))
+      method TEXT,
+      created_at INTEGER DEFAULT (strftime('%s', 'now')),
+      FOREIGN KEY (user_id) REFERENCES users(user_id)
+    );
+    
+    CREATE TABLE IF NOT EXISTS payments (
+      id TEXT PRIMARY KEY,
+      user_id TEXT,
+      amount REAL,
+      package_name TEXT,
+      email TEXT,
+      status TEXT DEFAULT 'pending',
+      proof_url TEXT,
+      created_at INTEGER DEFAULT (strftime('%s', 'now')),
+      FOREIGN KEY (user_id) REFERENCES users(user_id)
     );
     
     CREATE TABLE IF NOT EXISTS system_config (
@@ -84,17 +105,25 @@ for (const [key, val] of defaultConfigs) {
   } catch (err) {}
 }
 
-// Create test user if not exists
+// Create test users if not exists
 try {
   const testUser = db.prepare(`SELECT * FROM users WHERE user_id = ?`).get('USR-TEST001');
   if (!testUser) {
     const hash = bcrypt.hashSync('123456', 10);
-    db.prepare(`INSERT INTO users (user_id, pin_hash, gmail, is_verified, balance) VALUES (?, ?, ?, ?, ?)`)
-      .run('USR-TEST001', hash, 'test@gmail.com', 1, 25.50);
+    db.prepare(`INSERT INTO users (user_id, pin_hash, gmail, is_verified, balance, account_tier) VALUES (?, ?, ?, ?, ?, ?)`)
+      .run('USR-TEST001', hash, 'test@gmail.com', 1, 25.50, 'basic');
     console.log('✅ Test user created: USR-TEST001 / PIN: 123456');
   }
+  
+  const demoUser = db.prepare(`SELECT * FROM users WHERE user_id = ?`).get('USR-DEMO001');
+  if (!demoUser) {
+    const hash = bcrypt.hashSync('000000', 10);
+    db.prepare(`INSERT INTO users (user_id, pin_hash, gmail, is_verified, balance, account_tier) VALUES (?, ?, ?, ?, ?, ?)`)
+      .run('USR-DEMO001', hash, 'demo@gmail.com', 0, 5.00, 'trial');
+    console.log('✅ Demo user created: USR-DEMO001 / PIN: 000000');
+  }
 } catch (err) {
-  console.log('⚠️ Test user creation skipped');
+  console.log('⚠️ Test user creation skipped:', err.message);
 }
 
 const ADMIN_PIN_HASH = bcrypt.hashSync('043011', 10);
@@ -106,7 +135,7 @@ const onlineUsers = new Map();
 app.post('/api', (req, res) => {
   console.log('📡 API called:', req.body.action);
   
-  const { action, userId, pinCode, appData, isRegister } = req.body;
+  const { action, userId, pinCode, appData, isRegister, amount, method, recipientName, email, telegram } = req.body;
   
   // LOAD DATA / LOGIN
   if (action === 'load_data') {
@@ -128,11 +157,14 @@ app.post('/api', (req, res) => {
       db.prepare(`UPDATE users SET last_active = strftime('%s', 'now') WHERE user_id = ?`).run(userId);
       
       // Get transactions
-      const transactions = db.prepare(`SELECT * FROM transactions WHERE user_id = ? ORDER BY created_at DESC LIMIT 30`).all(userId);
+      const transactions = db.prepare(`SELECT * FROM transactions WHERE user_id = ? ORDER BY created_at DESC LIMIT 50`).all(userId);
       
       // Get maintenance status
       const maintenance = db.prepare(`SELECT value FROM system_config WHERE key = 'maintenance'`).get();
       const maintenanceMsg = db.prepare(`SELECT value FROM system_config WHERE key = 'maintenance_msg'`).get();
+      
+      // Get referral count
+      const referredCount = db.prepare(`SELECT COUNT(*) as count FROM users WHERE referred_by = ? AND is_verified = 1`).get(userId);
       
       return res.json({
         status: 'success',
@@ -145,9 +177,11 @@ app.post('/api', (req, res) => {
           serverVerified: user.is_verified === 1,
           accountTier: user.account_tier,
           paymentEmail: user.gmail || '',
-          referralCount: 0,
-          validReferralCount: 0,
+          referralCount: user.referral_count || 0,
+          validReferralCount: referredCount?.count || 0,
+          upgradeDate: user.upgrade_date,
           history: transactions || [],
+          server_unlocked_balance: user.balance,
           rate: 17000,
           isLoggedIn: true
         },
@@ -176,12 +210,18 @@ app.post('/api', (req, res) => {
       const newUserId = 'USR-' + crypto.randomBytes(3).toString('hex').toUpperCase();
       const pinHash = bcrypt.hashSync(pinCode, 10);
       const welcomeBonus = 5;
+      const referredBy = appData?.referredBy || null;
       
-      db.prepare(`INSERT INTO users (user_id, pin_hash, gmail, balance) VALUES (?, ?, ?, ?)`)
-        .run(newUserId, pinHash, appData.paymentEmail, welcomeBonus);
+      db.prepare(`INSERT INTO users (user_id, pin_hash, gmail, balance, referral_code, referred_by) VALUES (?, ?, ?, ?, ?, ?)`)
+        .run(newUserId, pinHash, appData.paymentEmail, welcomeBonus, newUserId, referredBy);
       
       db.prepare(`INSERT INTO transactions (user_id, amount, type, status, label, created_at) VALUES (?, ?, 'plus', 'success', 'Welcome Bonus', strftime('%s', 'now'))`)
         .run(newUserId, welcomeBonus);
+      
+      // Update referrer if exists
+      if (referredBy) {
+        db.prepare(`UPDATE users SET referral_count = referral_count + 1 WHERE user_id = ?`).run(referredBy);
+      }
       
       // REAL-TIME: Notify admin about new user
       io.emit('admin:new_user', { userId: newUserId, email: appData.paymentEmail });
@@ -197,6 +237,8 @@ app.post('/api', (req, res) => {
           serverVerified: false,
           accountTier: 'trial',
           paymentEmail: appData.paymentEmail,
+          referralCount: 0,
+          validReferralCount: 0,
           history: [],
           rate: 17000,
           isLoggedIn: true
@@ -211,8 +253,8 @@ app.post('/api', (req, res) => {
   // UPDATE USER DATA
   if (action === 'save_data' && userId && appData && !isRegister) {
     try {
-      db.prepare(`UPDATE users SET balance = ?, total_withdrawn = ?, monthly_earning = ?, account_tier = ? WHERE user_id = ?`)
-        .run(appData.balance || 0, appData.totalWD || 0, appData.monthly || 0, appData.account_tier || 'trial', userId);
+      db.prepare(`UPDATE users SET balance = ?, total_withdrawn = ?, monthly_earning = ?, account_tier = ?, upgrade_date = ? WHERE user_id = ?`)
+        .run(appData.balance || 0, appData.totalWD || 0, appData.monthly || 0, appData.account_tier || 'trial', appData.upgradeDate || null, userId);
       
       if (appData.paymentEmail) {
         db.prepare(`UPDATE users SET gmail = ? WHERE user_id = ?`).run(appData.paymentEmail, userId);
@@ -295,9 +337,10 @@ app.post('/api', (req, res) => {
       
       const fee = amount * 0.1;
       const netAmount = amount - fee;
+      const netIdr = netAmount * 17000;
       
       db.prepare(`INSERT INTO transactions (user_id, amount, type, status, label, method, created_at) VALUES (?, ?, 'minus', 'pending', 'Penarikan Uang', ?, strftime('%s', 'now'))`)
-        .run(userId, amount, `${method} | ${recipientName}`);
+        .run(userId, amount, `${method} | ${recipientName || ''} | Email: ${email || ''}`);
       
       db.prepare(`UPDATE users SET balance = balance - ? WHERE user_id = ?`).run(amount, userId);
       
@@ -342,15 +385,29 @@ app.post('/admin/api/login', (req, res) => {
   return res.json({ status: 'error', message: 'Invalid PIN' });
 });
 
-// Get all users
+// Get all users (PERBAIKAN: user_id tidak undefined)
 app.post('/admin/api/users', (req, res) => {
   try {
     const users = db.prepare(`
       SELECT user_id, gmail, balance, is_verified, is_banned, account_tier, created_at 
       FROM users ORDER BY created_at DESC
     `).all();
-    return res.json({ users });
+    
+    // Format ulang agar frontend bisa baca user_id dengan benar
+    const formattedUsers = users.map(u => ({
+      userId: u.user_id,
+      user_id: u.user_id,
+      gmail: u.gmail || '-',
+      balance: u.balance,
+      is_verified: u.is_verified,
+      is_banned: u.is_banned,
+      account_tier: u.account_tier,
+      created_at: u.created_at
+    }));
+    
+    return res.json({ users: formattedUsers });
   } catch (err) {
+    console.error('Get users error:', err);
     return res.json({ users: [] });
   }
 });
@@ -530,23 +587,36 @@ app.post('/admin/api/danger_action', (req, res) => {
       }
       db.prepare(`DELETE FROM users WHERE is_banned = 1`).run();
     }
+    if (action === 'reset_pending_payments') {
+      db.prepare(`DELETE FROM payments WHERE status = 'pending'`).run();
+    }
     return res.json({ status: 'ok' });
   } catch (err) {
     return res.json({ status: 'error', message: err.message });
   }
 });
 
-// Payments placeholder
+// Payments 
 app.post('/admin/api/payments', (req, res) => {
-  return res.json({ payments: [] });
+  try {
+    const payments = db.prepare(`SELECT * FROM payments ORDER BY created_at DESC`).all();
+    return res.json({ payments: payments || [] });
+  } catch (err) {
+    return res.json({ payments: [] });
+  }
 });
 
 app.post('/admin/api/verify_payment', (req, res) => {
   const { paymentId, status, userId } = req.body;
-  if (status === 'verified') {
-    io.to(`user_${userId}`).emit('payment:verified', { status: 'verified' });
+  try {
+    db.prepare(`UPDATE payments SET status = ? WHERE id = ?`).run(status, paymentId);
+    if (status === 'verified') {
+      io.to(`user_${userId}`).emit('payment:verified', { status: 'verified' });
+    }
+    return res.json({ status: 'ok' });
+  } catch (err) {
+    return res.json({ status: 'error', message: err.message });
   }
-  return res.json({ status: 'ok' });
 });
 
 // ============ SOCKET.IO REAL-TIME ============
@@ -616,5 +686,6 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log('╠════════════════════════════════════════╣');
   console.log('║  🔐 PIN Admin: 043011                  ║');
   console.log('║  🧪 Test User: USR-TEST001 / 123456    ║');
+  console.log('║  🧪 Demo User: USR-DEMO001 / 000000    ║');
   console.log('╚════════════════════════════════════════╝\n');
 });
