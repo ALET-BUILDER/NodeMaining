@@ -29,7 +29,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Tambahan Script Confetti -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
-    <!-- [KEAMANAN] Proteksi login dengan rate-limiting server-side -->
+    <!-- [KEAMANAN] Cloudflare Turnstile (CAPTCHA anti-bot pendaftaran) -->
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #1e293b; -webkit-font-smoothing: antialiased; }
         
@@ -258,7 +259,8 @@
                             <input type="password" maxlength="1" class="pin-box login-pin !bg-slate-950 !border-slate-700 focus:!border-blue-500 !h-12 !w-10 !rounded-xl" inputmode="numeric">
                         </div>
                     </div>
-                                        <button id="btn-process-login" onclick="loginWithExistingId()"
+                    <div id="login-cf-box" class="hidden mb-3 flex justify-center"></div>
+                    <button id="btn-process-login" onclick="loginWithExistingId()"
                         class="w-full text-white font-black py-4 rounded-xl text-sm active:scale-95 tracking-wide flex justify-center items-center gap-2 transition-all"
                         style="background:linear-gradient(135deg,#1d4ed8,#2563eb);box-shadow:0 0 20px rgba(37,99,235,0.4);border:1px solid rgba(59,130,246,0.4)">
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
@@ -290,9 +292,9 @@
 
             <!-- Footer -->
             <div class="mt-5 space-y-3">
-                <a href="https://whatsapp.com/channel/0029VbCRVNN0G0XkJ7oPH43P" target="_blank" class="flex items-center justify-center gap-2 w-full py-3 rounded-2xl font-bold text-sm transition-all active:scale-95" style="background:rgba(34,158,217,0.1);border:1px solid rgba(34,158,217,0.25);color:#5ab9f0">
+                <a href="https://t.me/nodemasterr" target="_blank" class="flex items-center justify-center gap-2 w-full py-3 rounded-2xl font-bold text-sm transition-all active:scale-95" style="background:rgba(34,158,217,0.1);border:1px solid rgba(34,158,217,0.25);color:#5ab9f0">
                     <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
-                    Komunitas Saluran WhatsApp 
+                    Komunitas Telegram — @nodemasterr
                 </a>
                 <div class="text-center">
                     <p class="text-[10px] text-slate-600 font-mono tracking-widest uppercase flex items-center justify-center gap-2">
@@ -302,7 +304,7 @@
                     <p class="mt-2">
                         <a href="disclaimer.html" target="_blank" class="text-[10px] text-slate-500 hover:text-blue-400 underline underline-offset-2 transition-colors">Kebijakan Privasi &amp; Syarat Ketentuan</a>
                     </p>
-                    <p class="mt-1.5 text-[10px] text-slate-500">Butuh bantuan? <a href="mailto: harzh870@company.com" class="text-blue-400 hover:text-blue-300 underline underline-offset-2">support</a></p>
+                    <p class="mt-1.5 text-[10px] text-slate-500">Butuh bantuan? <a href="mailto:support@nodemaster.cloud" class="text-blue-400 hover:text-blue-300 underline underline-offset-2">support@nodemaster.cloud</a></p>
                 </div>
             </div>
         </div>
@@ -396,9 +398,9 @@
             </div>
 
             <!-- Telegram CTA -->
-            <a href="https://whatsapp.com/channel/0029VbCRVNN0G0XkJ7oPH43P" target="_blank" class="mt-4 flex items-center justify-center gap-2 text-[11px] text-slate-500 hover:text-slate-300 transition-colors py-2">
+            <a href="https://t.me/nodemasterr" target="_blank" class="mt-4 flex items-center justify-center gap-2 text-[11px] text-slate-500 hover:text-slate-300 transition-colors py-2">
                 <svg class="h-3.5 w-3.5 text-[#229ED9]" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
-                Bergabung dengan komunitas WhatsApp
+                Bergabung dengan komunitas WhatsApp 
             </a>
 
         </div>
@@ -433,6 +435,14 @@
                 <input type="password" maxlength="1" class="pin-box reg-pin !bg-slate-900/80 !border-slate-700 focus:!border-blue-500 !text-white !h-12 !w-10 !rounded-xl shadow-inner" inputmode="numeric">
             </div>
 
+            <!-- [KEAMANAN] CAPTCHA Cloudflare Turnstile — tak terlihat untuk user asli,
+                 hanya menantang yang mencurigakan. Token dikirim saat daftar. -->
+            <div id="cf-turnstile-box" class="cf-turnstile mb-4 flex justify-center relative z-10"
+                 data-sitekey="0x4AAAAAADbcXjjtzcvXCN8w"
+                 data-callback="onTurnstileSuccess"
+                 data-expired-callback="onTurnstileExpired"
+                 data-error-callback="onTurnstileExpired"
+                 data-size="flexible"></div>
 
             <div class="flex gap-3 w-full relative z-10">
                 <button onclick="closePinCreationModal()" class="w-1/3 bg-slate-800/80 border border-slate-700 hover:bg-slate-700 text-slate-300 font-bold py-3.5 rounded-xl transition-all text-xs tracking-wider">Batal</button>
@@ -652,7 +662,7 @@
                 <!-- Aksi -->
                 <div class="space-y-2 mb-4">
                     <button onclick="closeProfileModal(); if(typeof openAiChat==='function')openAiChat();" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-white/[0.04] border border-white/10 text-slate-300 hover:text-white hover:bg-white/[0.07] transition-all text-[12px] font-bold active:scale-[0.98]">💬 Bantuan / Customer Support</button>
-                    <a href="mailto:support@nodemaster.cloud" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-white/[0.04] border border-white/10 text-slate-300 hover:text-white hover:bg-white/[0.07] transition-all text-[12px] font-bold">📧 Email: support@nodemaster.cloud</a>
+                    <a href="mailto:support@nodemaster.cloud" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-white/[0.04] border border-white/10 text-slate-300 hover:text-white hover:bg-white/[0.07] transition-all text-[12px] font-bold">📧 Email: support@nodemaining</a>
                     <a href="https://t.me/nodemasterr" target="_blank" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-white/[0.04] border border-white/10 text-slate-300 hover:text-white hover:bg-white/[0.07] transition-all text-[12px] font-bold">✈️ Komunitas Telegram</a>
                     <a href="disclaimer.html" target="_blank" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-white/[0.04] border border-white/10 text-slate-300 hover:text-white hover:bg-white/[0.07] transition-all text-[12px] font-bold">📄 Kebijakan Privasi &amp; Syarat Ketentuan</a>
                 </div>
@@ -3056,7 +3066,7 @@
                 // [FIX BUG8] PIN dikirim via POST body — tidak muncul di URL/server log
                 const fetchUrl = `${API_URL}?action=load_data&user_id=${userId}&_t=${Date.now()}`;
                 const fetchOpts = pin
-                    ? { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({pin}) }
+                    ? { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({pin, cf_token: window.__cfTokenLogin || ''}) }
                     : {};
 
                 const response = await fetch(fetchUrl, fetchOpts);
@@ -3281,7 +3291,33 @@
             }, 300);
         }
 
-        // [DIHAPUS] Cloudflare Turnstile — verifikasi bot ditangani server-side
+        // [KEAMANAN] Token CAPTCHA Cloudflare Turnstile (untuk pendaftaran akun baru).
+        // Diisi otomatis oleh widget via callback; dikosongkan saat kadaluwarsa/error.
+        window.__cfToken = '';
+        function onTurnstileSuccess(token) { window.__cfToken = token || ''; }
+        function onTurnstileExpired()       { window.__cfToken = ''; }
+
+        // [KEAMANAN LOGIN] Turnstile khusus login — muncul setelah beberapa kali PIN salah.
+        window.__cfTokenLogin = '';
+        function onLoginTurnstile(token)   { window.__cfTokenLogin = token || ''; }
+        function onLoginTurnstileExpired() { window.__cfTokenLogin = ''; }
+        var _loginCfRendered = false;
+        function showLoginCaptcha() {
+            var box = document.getElementById('login-cf-box');
+            if (!box) return;
+            box.classList.remove('hidden');
+            try {
+                if (!_loginCfRendered && window.turnstile && typeof turnstile.render === 'function') {
+                    turnstile.render('#login-cf-box', {
+                        sitekey: '0x4AAAAAADbcXjjtzcvXCN8w',
+                        callback: onLoginTurnstile,
+                        'expired-callback': onLoginTurnstileExpired,
+                        'error-callback': onLoginTurnstileExpired
+                    });
+                    _loginCfRendered = true;
+                }
+            } catch (e) {}
+        }
 
         // FITUR BARU: Parameter isRegister untuk memberi tahu server
         async function saveData(isRegister = false) {
@@ -3313,7 +3349,10 @@
                 isRegister: isRegister // Penanda mutlak ke server
             };
 
-            // [KEAMANAN] Proteksi bot ditangani server-side (rate limiting, IP check).
+            // [KEAMANAN] Sertakan token CAPTCHA Turnstile hanya saat pendaftaran baru.
+            if (isRegister) {
+                payload.cfToken = window.__cfToken || '';
+            }
 
             // Kirim PIN jika ada (saat daftar baru atau update user lama)
             if (userPinCode) {
@@ -6326,6 +6365,11 @@
                     if (errEl) { errEl.innerText = '⚠️ Terlalu banyak percobaan login. Coba lagi nanti ya (demi keamanan akunmu).'; errEl.classList.remove('hidden'); }
                     return;
                 }
+                if (result.error === 'captcha_required') {
+                    if (typeof showLoginCaptcha === 'function') showLoginCaptcha();
+                    if (errEl) { errEl.innerText = '🔒 Verifikasi keamanan: selesaikan kotak di bawah, lalu tekan Akses Dashboard lagi.'; errEl.classList.remove('hidden'); }
+                    return;
+                }
 
                 if (result.appData) {
                     // ========== LOGIN SUKSES ==========
@@ -6463,6 +6507,11 @@
                 return;
             }
 
+            // [KEAMANAN] Pastikan token CAPTCHA Turnstile sudah siap sebelum buat akun.
+            if (!window.__cfToken) {
+                showAlert("Verifikasi Keamanan ⏳", "Mohon tunggu sebentar hingga verifikasi keamanan selesai (atau muat ulang halaman), lalu coba lagi.");
+                return;
+            }
 
             const btnReg = document.getElementById('btn-execute-reg');
             const originalBtnText = btnReg.innerText;
