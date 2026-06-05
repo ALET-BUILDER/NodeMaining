@@ -173,7 +173,23 @@ function getUserByGmail(gmail) {
 }
 
 function getAllUsers() {
-  return db.prepare(`SELECT * FROM users ORDER BY created_at DESC`).all();
+  const users = db.prepare(`SELECT 
+    user_id, 
+    gmail, 
+    balance, 
+    total_withdrawn, 
+    monthly_earning,
+    is_verified, 
+    is_banned, 
+    account_tier, 
+    referral_count,
+    created_at,
+    last_active,
+    admin_note
+    FROM users ORDER BY created_at DESC`).all();
+  
+  console.log('📊 Users loaded:', users.map(u => ({ id: u.user_id, verified: u.is_verified })));
+  return users;
 }
 
 function createUser(userId, pinHash, gmail, referredBy = null) {
@@ -638,35 +654,70 @@ app.post('/admin/api/ban_user', verifyAdmin, (req, res) => {
 });
 
 // Update balance
+// Update balance
 app.post('/admin/api/update_balance', verifyAdmin, (req, res) => {
   const { userId, balance, reason } = req.body;
+  console.log(`💰 Updating balance for ${userId} to ${balance}`);
+  
   try {
-    const oldBalance = db.prepare(`SELECT balance FROM users WHERE user_id = ?`).get(userId)?.balance || 0;
-    db.prepare(`UPDATE users SET balance = ? WHERE user_id = ?`).run(balance, userId);
-    addTransaction(userId, balance - oldBalance, 'plus', 'success', `Admin adjustment: ${reason || ''}`);
+    // Cek user exists
+    const user = db.prepare(`SELECT * FROM users WHERE user_id = ?`).get(userId);
+    if (!user) {
+      return res.json({ status: 'error', message: 'User not found' });
+    }
+    
+    // Update balance
+    const stmt = db.prepare(`UPDATE users SET balance = ? WHERE user_id = ?`);
+    stmt.run(balance, userId);
+    
+    // Add transaction record
+    const diff = balance - user.balance;
+    if (Math.abs(diff) > 0.01) {
+      db.prepare(`INSERT INTO transactions (user_id, amount, type, status, label, created_at) 
+        VALUES (?, ?, 'plus', 'success', ?, strftime('%s', 'now'))`)
+        .run(userId, diff, `Admin adjustment: ${reason || 'Manual update'}`);
+    }
+    
+    // Send realtime update to user
     io.to(`user_${userId}`).emit('balance:updated', { balance });
+    
+    console.log(`✅ Balance updated: ${userId} → $${balance}`);
     return res.json({ status: 'ok' });
   } catch (err) {
+    console.error('Update balance error:', err);
     return res.json({ status: 'error', message: err.message });
   }
 });
 
 // Verify user (FIX: langsung buka gembok)
+// Verify user (FIX: pastikan update is_verified = 1)
+// Verify user (FIX: update is_verified dan account_tier)
 app.post('/admin/api/verify_user', verifyAdmin, (req, res) => {
   const { userId, note } = req.body;
+  console.log(`🔐 Verifying user: ${userId}`);
+  
   try {
-    db.prepare(`UPDATE users SET is_verified = 1, account_tier = 'basic', admin_note = ? WHERE user_id = ?`)
-      .run(note || 'Verified by admin', userId);
+    // Cek user exists
+    const user = db.prepare(`SELECT * FROM users WHERE user_id = ?`).get(userId);
+    if (!user) {
+      return res.json({ status: 'error', message: 'User not found' });
+    }
     
+    // Update is_verified = 1 dan account_tier = 'basic'
+    const stmt = db.prepare(`UPDATE users SET is_verified = 1, account_tier = 'basic', admin_note = ? WHERE user_id = ?`);
+    stmt.run(note || 'Verified by admin', userId);
+    
+    // Cek apakah berhasil
+    const updated = db.prepare(`SELECT is_verified, account_tier FROM users WHERE user_id = ?`).get(userId);
+    console.log(`✅ User ${userId} verified:`, updated);
+    
+    // Kirim event ke user (biar UI update)
     io.to(`user_${userId}`).emit('user:verified', { userId });
     io.to(`user_${userId}`).emit('verification:complete', { verified: true });
     
-    const user = db.prepare(`SELECT balance FROM users WHERE user_id = ?`).get(userId);
-    io.to(`user_${userId}`).emit('balance:updated', { balance: user?.balance || 0 });
-    
-    console.log(`✅ User ${userId} verified by admin`);
     return res.json({ status: 'ok' });
   } catch (err) {
+    console.error('Verify error:', err);
     return res.json({ status: 'error', message: err.message });
   }
 });
@@ -899,6 +950,17 @@ app.post('/admin/api/danger_action', verifyAdmin, (req, res) => {
     return res.json({ status: 'ok' });
   } catch (err) {
     return res.json({ status: 'error', message: err.message });
+  }
+});
+
+// DEBUG: Cek status user (bisa diakses via browser)
+app.get('/admin/debug/:userId', verifyAdmin, (req, res) => {
+  const { userId } = req.params;
+  try {
+    const user = db.prepare(`SELECT user_id, is_verified, account_tier, balance, gmail FROM users WHERE user_id = ?`).get(userId);
+    res.json(user || { error: 'User not found' });
+  } catch (err) {
+    res.json({ error: err.message });
   }
 });
 

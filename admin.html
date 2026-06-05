@@ -1091,23 +1091,51 @@
         } catch(e) { showToast('❌ Gagal', e.message, 'rose'); }
     }
 
-    async function updateUserBalance() {
-        if (!selectedUser) return;
-        const balance = parseFloat(document.getElementById('modal-balance-input').value);
-        if (isNaN(balance)) { showToast('⚠️ Nominal tidak valid', '', 'amber'); return; }
-        try {
-            await adminApi('update_balance', { userId: selectedUser.userId, balance });
-            showToast('✅ Saldo diperbarui', `${selectedUser.userId}: $${balance.toFixed(2)}`, 'emerald');
-            closeUserModal();
-            loadUsers();
-        } catch(e) { showToast('❌ Gagal', e.message, 'rose'); }
+async function updateUserBalance() {
+    if (!selectedUser) return;
+    const balance = parseFloat(document.getElementById('modal-balance-input').value);
+    if (isNaN(balance)) { 
+        showToast('⚠️ Nominal tidak valid', '', 'amber'); 
+        return; 
     }
+    
+    const note = document.getElementById('modal-admin-note').value.trim();
+    console.log(`💰 Updating balance: ${selectedUser.userId} → $${balance}`);
+    
+    try {
+        const response = await adminApi('update_balance', { 
+            userId: selectedUser.userId, 
+            balance: balance,
+            reason: note || 'Admin adjustment'
+        });
+        
+        console.log('Update response:', response);
+        
+        if (response.status === 'ok') {
+            showToast('✅ Saldo diperbarui', `${selectedUser.userId}: $${balance.toFixed(2)}`, 'emerald');
+            
+            // Update local data
+            selectedUser.balance = balance;
+            
+            // Refresh user list
+            await loadUsers();
+            
+            // Close modal
+            closeUserModal();
+        } else {
+            showToast('❌ Gagal', response.message || 'Unknown error', 'rose');
+        }
+    } catch(err) { 
+        console.error('Update balance error:', err);
+        showToast('❌ Gagal', err.message, 'rose'); 
+    }
+}
 
 async function verifyUserManual() {
     if (!selectedUser) return;
     const note = document.getElementById('modal-admin-note').value.trim();
     
-    console.log('🔧 Verifying user:', selectedUser.userId);
+    console.log(`🔐 Verifying user: ${selectedUser.userId}`);
     
     try {
         const response = await adminApi('verify_user', { 
@@ -1115,7 +1143,7 @@ async function verifyUserManual() {
             note: note || 'Verified by admin'
         });
         
-        console.log('📡 Verify response:', response);
+        console.log('Verify response:', response);
         
         if (response.status === 'ok') {
             showToast('✅ User diverifikasi!', selectedUser.userId, 'emerald');
@@ -1126,9 +1154,11 @@ async function verifyUserManual() {
             
             // Refresh user list
             await loadUsers();
+            
+            // Close modal
             closeUserModal();
             
-            // Optional: reload dashboard stats
+            // Reload dashboard stats
             loadDashboardData();
         } else {
             showToast('❌ Gagal verifikasi', response.message || 'Unknown error', 'rose');
