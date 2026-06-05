@@ -3064,9 +3064,13 @@ async function loadDataFromServer(userId, pin = "") {
                 pinCode: pin
             })
         });
-        if (!response.ok) return null;
+        if (!response.ok) {
+            return null;
+        }
         const textData = await response.text();
-        if (!textData || textData.trim() === "" || textData.trim().startsWith("<")) return null;
+        if (!textData || textData.trim() === "" || textData.trim().startsWith("<")) {
+            return null;
+        }
         const result = JSON.parse(textData);
         
         if (result.status === 'error' && result.message === 'BANNED') {
@@ -3080,12 +3084,14 @@ async function loadDataFromServer(userId, pin = "") {
             return { error: 'too_many' };
         } else if (result.status === 'success') {
             document.getElementById('banned-screen').classList.add('hidden');
-            if (result.server_time) serverTimeOffset = result.server_time - Date.now();
+            if (result.server_time) {
+                serverTimeOffset = result.server_time - Date.now();
+            }
             ingestRefCfg(result);
             try {
                 window.NM_NEEDS_SOURCE = !!result.needs_source;
-                if (window.NM_NEEDS_SOURCE) setTimeout(() => { try { window.maybeAskSource?.(); } catch(e) {} }, 800);
-            } catch(e) {}
+                if (window.NM_NEEDS_SOURCE) setTimeout(function () { try { window.maybeAskSource && window.maybeAskSource(); } catch (e) {} }, 800);
+            } catch (e) {}
             return {
                 appData: result.appData,
                 needs_pin: result.require_pin_setup || false,
