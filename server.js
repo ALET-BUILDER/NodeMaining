@@ -139,7 +139,6 @@ try {
 const ADMIN_PIN_HASH = bcrypt.hashSync('043011', 10);
 
 try {
-  // Test user
   const testUser = db.prepare(`SELECT * FROM users WHERE user_id = ?`).get('USR-TEST001');
   if (!testUser) {
     const hash = bcrypt.hashSync('123456', 10);
@@ -149,7 +148,6 @@ try {
     console.log('✅ Test user created: USR-TEST001 / PIN: 123456');
   }
   
-  // Demo user
   const demoUser = db.prepare(`SELECT * FROM users WHERE user_id = ?`).get('USR-DEMO001');
   if (!demoUser) {
     const hash = bcrypt.hashSync('000000', 10);
@@ -182,17 +180,15 @@ function createUser(userId, pinHash, gmail, referredBy = null) {
   const welcomeBonus = 5;
   
   const stmt = db.prepare(`INSERT INTO users 
-    (user_id, pin_hash, gmail, balance, referral_code, referred_by, admin_note) 
-    VALUES (?, ?, ?, ?, ?, ?, ?)`);
+    (user_id, pin_hash, gmail, balance, referral_code, referred_by, admin_note, created_at) 
+    VALUES (?, ?, ?, ?, ?, ?, ?, strftime('%s', 'now'))`);
   
   stmt.run(userId, pinHash, gmail, welcomeBonus, userId, referredBy, 'New registration');
   
-  // Add welcome bonus transaction
   db.prepare(`INSERT INTO transactions (user_id, amount, type, status, label, created_at) 
     VALUES (?, ?, 'plus', 'success', 'Welcome Bonus', strftime('%s', 'now'))`)
     .run(userId, welcomeBonus);
   
-  // Update referrer if exists
   if (referredBy) {
     db.prepare(`UPDATE users SET referral_count = referral_count + 1 WHERE user_id = ?`).run(referredBy);
   }
@@ -259,112 +255,100 @@ app.post('/api', async (req, res) => {
   
   const { action, userId, pinCode, appData, isRegister, amount, method, recipientName, email, telegram, refCode } = req.body;
   
-  // ============ REGISTER (CREATE NEW ACCOUNT) ============
-// REGISTER
-if (action === 'save_data' && isRegister === true) {
+  // REGISTER
+  if (action === 'save_data' && isRegister === true) {
     console.log('📝 Processing registration...');
     console.log('  - Gmail:', appData?.paymentEmail);
     console.log('  - Referral code:', refCode || 'none');
     
     try {
-        // Validate Gmail
-        const gmail = appData?.paymentEmail?.trim().toLowerCase();
-        if (!gmail || !gmail.includes('@')) {
-            return res.json({ status: 'error', message: 'Invalid email' });
+      const gmail = appData?.paymentEmail?.trim().toLowerCase();
+      if (!gmail || !gmail.includes('@')) {
+        return res.json({ status: 'error', message: 'Invalid email' });
+      }
+      
+      const existingUser = getUserByGmail(gmail);
+      if (existingUser) {
+        console.log('  ❌ Gmail already taken:', gmail);
+        return res.json({ status: 'error', message: 'GMAIL_TAKEN', desc: 'Gmail sudah terdaftar' });
+      }
+      
+      let newUserId;
+      let isUnique = false;
+      let attempts = 0;
+      
+      while (!isUnique && attempts < 10) {
+        const randomPart = crypto.randomBytes(3).toString('hex').toUpperCase();
+        newUserId = `USR-${randomPart}`;
+        const existing = getUser(newUserId);
+        if (!existing) isUnique = true;
+        attempts++;
+      }
+      
+      console.log('  ✅ Generated User ID:', newUserId);
+      
+      const pinHash = bcrypt.hashSync(pinCode, 10);
+      
+      let referredBy = null;
+      if (refCode) {
+        const referrer = getUser(refCode);
+        if (referrer && !referrer.is_banned) {
+          referredBy = refCode;
+          console.log('  ✅ Referral from:', referredBy);
         }
-        
-        // Check if Gmail already exists
-        const existingUser = getUserByGmail(gmail);
-        if (existingUser) {
-            console.log('  ❌ Gmail already taken:', gmail);
-            return res.json({ status: 'error', message: 'GMAIL_TAKEN', desc: 'Gmail sudah terdaftar' });
+      }
+      
+      const welcomeBonus = 5;
+      
+      const stmt = db.prepare(`INSERT INTO users 
+        (user_id, pin_hash, gmail, balance, referral_code, referred_by, admin_note, created_at) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, strftime('%s', 'now'))`);
+      
+      stmt.run(newUserId, pinHash, gmail, welcomeBonus, newUserId, referredBy, 'New registration');
+      
+      db.prepare(`INSERT INTO transactions (user_id, amount, type, status, label, created_at) 
+        VALUES (?, ?, 'plus', 'success', 'Welcome Bonus', strftime('%s', 'now'))`)
+        .run(newUserId, welcomeBonus);
+      
+      if (referredBy) {
+        db.prepare(`UPDATE users SET referral_count = referral_count + 1 WHERE user_id = ?`).run(referredBy);
+      }
+      
+      console.log('  ✅ User created successfully!');
+      console.log('  - User ID:', newUserId);
+      console.log('  - Balance:', welcomeBonus);
+      
+      const newUser = getUser(newUserId);
+      
+      io.emit('admin:new_user', { userId: newUserId, email: gmail });
+      
+      return res.json({
+        status: 'success',
+        userId: newUserId,
+        appData: {
+          userId: newUserId,
+          balance: welcomeBonus,
+          totalWD: 0,
+          monthly: 0,
+          serverVerified: false,
+          accountTier: 'trial',
+          paymentEmail: gmail,
+          referralCount: 0,
+          validReferralCount: 0,
+          history: [],
+          rate: 17000,
+          isLoggedIn: true,
+          created_at: newUser?.created_at
         }
-        
-        // Generate unique User ID
-        let newUserId;
-        let isUnique = false;
-        let attempts = 0;
-        
-        while (!isUnique && attempts < 10) {
-            const randomPart = crypto.randomBytes(3).toString('hex').toUpperCase();
-            newUserId = `USR-${randomPart}`;
-            const existing = getUser(newUserId);
-            if (!existing) isUnique = true;
-            attempts++;
-        }
-        
-        console.log('  ✅ Generated User ID:', newUserId);
-        
-        // Hash PIN
-        const pinHash = bcrypt.hashSync(pinCode, 10);
-        
-        // Process referral if exists
-        let referredBy = null;
-        if (refCode) {
-            const referrer = getUser(refCode);
-            if (referrer && !referrer.is_banned) {
-                referredBy = refCode;
-                console.log('  ✅ Referral from:', referredBy);
-            }
-        }
-        
-        // Create user in database
-        const welcomeBonus = 5;
-        
-        const stmt = db.prepare(`INSERT INTO users 
-            (user_id, pin_hash, gmail, balance, referral_code, referred_by, admin_note, created_at) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, strftime('%s', 'now'))`);
-        
-        stmt.run(newUserId, pinHash, gmail, welcomeBonus, newUserId, referredBy, 'New registration');
-        
-        // Add welcome bonus transaction
-        db.prepare(`INSERT INTO transactions (user_id, amount, type, status, label, created_at) 
-            VALUES (?, ?, 'plus', 'success', 'Welcome Bonus', strftime('%s', 'now'))`)
-            .run(newUserId, welcomeBonus);
-        
-        // Update referrer if exists
-        if (referredBy) {
-            db.prepare(`UPDATE users SET referral_count = referral_count + 1 WHERE user_id = ?`).run(referredBy);
-        }
-        
-        console.log('  ✅ User created successfully!');
-        console.log('  - User ID:', newUserId);
-        console.log('  - Balance:', welcomeBonus);
-        
-        // Get the newly created user for response
-        const newUser = getUser(newUserId);
-        
-        // Notify admin via socket
-        io.emit('admin:new_user', { userId: newUserId, email: gmail });
-        
-        // ========== KRITIKAL: Return userId yang benar ==========
-        return res.json({
-            status: 'success',
-            userId: newUserId,  // ← INI YANG PENTING!
-            appData: {
-                userId: newUserId,
-                balance: welcomeBonus,
-                totalWD: 0,
-                monthly: 0,
-                serverVerified: false,
-                accountTier: 'trial',
-                paymentEmail: gmail,
-                referralCount: 0,
-                validReferralCount: 0,
-                history: [],
-                rate: 17000,
-                isLoggedIn: true,
-                created_at: newUser?.created_at
-            }
-        });
-        
+      });
+      
     } catch (err) {
-        console.error('❌ Registration error:', err);
-        return res.json({ status: 'error', message: 'Registration failed: ' + err.message });
+      console.error('❌ Registration error:', err);
+      return res.json({ status: 'error', message: 'Registration failed: ' + err.message });
     }
-}
+  }
   
-  // ============ LOAD DATA / LOGIN ============
+  // LOAD DATA / LOGIN
   if (action === 'load_data') {
     console.log('🔐 Login attempt for:', userId);
     
@@ -381,7 +365,6 @@ if (action === 'save_data' && isRegister === true) {
         return res.json({ status: 'error', message: 'BANNED' });
       }
       
-      // Verify PIN
       const pinValid = bcrypt.compareSync(pinCode, user.pin_hash);
       if (!pinValid) {
         console.log('  ❌ Wrong PIN for user:', userId);
@@ -390,20 +373,15 @@ if (action === 'save_data' && isRegister === true) {
       
       console.log('  ✅ Login successful:', userId);
       
-      // Update last active
       updateUser(userId, { last_active: Math.floor(Date.now() / 1000) });
       
-      // Get transactions
       const transactions = getUserTransactions(userId, 50);
       
-      // Get configs
       const maintenance = getConfig('maintenance') === 'true';
       const maintenanceMsg = getConfig('maintenance_msg') || '';
       
-      // Get referrals
       const referrals = getReferrals(userId);
       
-      // Calculate unlocked balance
       const refRewardRate = user.account_tier === 'vip' ? 0.75 : (user.account_tier === 'pro' ? 0.5 : 0.25);
       const verifFee = parseFloat(getConfig('verification_fee') || 17000);
       const unlockedFromRefs = (referrals.valid || 0) * refRewardRate * (verifFee / 17000);
@@ -443,7 +421,7 @@ if (action === 'save_data' && isRegister === true) {
     }
   }
   
-  // ============ UPDATE USER DATA ============
+  // UPDATE USER DATA
   if (action === 'save_data' && userId && appData && !isRegister) {
     try {
       updateUser(userId, {
@@ -462,7 +440,7 @@ if (action === 'save_data' && isRegister === true) {
     }
   }
   
-  // ============ CHECK-IN CLAIM ============
+  // CHECK-IN CLAIM
   if (action === 'claim_checkin') {
     try {
       const user = getUser(userId);
@@ -495,7 +473,6 @@ if (action === 'save_data' && isRegister === true) {
       addTransaction(userId, reward, 'plus', 'success', 
         isJackpot ? 'Jackpot Check-In (Hari 7)' : `Hadiah Check-In (Hari ${streak})`);
       
-      // Notify user via socket
       io.to(`user_${userId}`).emit('balance:updated', { balance: user.balance + reward });
       
       return res.json({
@@ -510,7 +487,7 @@ if (action === 'save_data' && isRegister === true) {
     }
   }
   
-  // ============ GET REFERRALS ============
+  // GET REFERRALS
   if (action === 'get') {
     try {
       const referrals = getReferrals(userId);
@@ -526,7 +503,7 @@ if (action === 'save_data' && isRegister === true) {
     }
   }
   
-  // ============ REQUEST WITHDRAW ============
+  // REQUEST WITHDRAW
   if (action === 'request_withdraw') {
     try {
       const user = getUser(userId);
@@ -537,13 +514,10 @@ if (action === 'save_data' && isRegister === true) {
       const fee = amount * 0.1;
       const netAmount = amount - fee;
       
-      // Deduct from balance
       updateUser(userId, { balance: user.balance - amount });
       
-      // Add transaction record
       addTransaction(userId, amount, 'minus', 'pending', 'Penarikan Uang', `${method} | ${recipientName}`);
       
-      // Notify admin
       io.emit('admin:withdrawal_request', { userId, amount, netAmount, recipientName });
       
       return res.json({ status: 'success', message: 'Withdrawal request submitted' });
@@ -552,7 +526,7 @@ if (action === 'save_data' && isRegister === true) {
     }
   }
   
-  // ============ SUBMIT REPORT ============
+  // SUBMIT REPORT
   if (action === 'submit_report') {
     try {
       console.log(`📝 Report from ${userId}: [${req.body.category}] ${req.body.message}`);
@@ -568,7 +542,6 @@ if (action === 'save_data' && isRegister === true) {
 
 // ============ ADMIN API ============
 
-// Middleware untuk admin
 function verifyAdmin(req, res, next) {
   const token = req.headers.authorization?.replace('Bearer ', '');
   if (!token || !verifyAdminToken(token)) {
@@ -598,15 +571,15 @@ app.post('/admin/api/users', verifyAdmin, (req, res) => {
     
     const formattedUsers = users.map(u => ({
       userId: u.user_id,
-      gmail: u.gmail || '-',
+      paymentEmail: u.gmail || '-',
       balance: u.balance,
       total_withdrawn: u.total_withdrawn,
       monthly_earning: u.monthly_earning,
-      is_verified: u.is_verified === 1,
-      is_banned: u.is_banned === 1,
+      isVerified: u.is_verified === 1,
+      isBanned: u.is_banned === 1,
       account_tier: u.account_tier,
-      referral_count: u.referral_count,
-      created_at: u.created_at,
+      referralCount: u.referral_count || 0,
+      createdAt: u.created_at,
       last_active: u.last_active,
       admin_note: u.admin_note
     }));
@@ -668,9 +641,9 @@ app.post('/admin/api/ban_user', verifyAdmin, (req, res) => {
 app.post('/admin/api/update_balance', verifyAdmin, (req, res) => {
   const { userId, balance, reason } = req.body;
   try {
+    const oldBalance = db.prepare(`SELECT balance FROM users WHERE user_id = ?`).get(userId)?.balance || 0;
     db.prepare(`UPDATE users SET balance = ? WHERE user_id = ?`).run(balance, userId);
-    addTransaction(userId, balance - (db.prepare(`SELECT balance FROM users WHERE user_id = ?`).get(userId)?.balance || 0), 
-      'plus', 'success', `Admin adjustment: ${reason || ''}`);
+    addTransaction(userId, balance - oldBalance, 'plus', 'success', `Admin adjustment: ${reason || ''}`);
     io.to(`user_${userId}`).emit('balance:updated', { balance });
     return res.json({ status: 'ok' });
   } catch (err) {
@@ -678,12 +651,43 @@ app.post('/admin/api/update_balance', verifyAdmin, (req, res) => {
   }
 });
 
-// Verify user
+// Verify user (FIX: langsung buka gembok)
 app.post('/admin/api/verify_user', verifyAdmin, (req, res) => {
   const { userId, note } = req.body;
   try {
-    db.prepare(`UPDATE users SET is_verified = 1, admin_note = ? WHERE user_id = ?`).run(note || '', userId);
+    db.prepare(`UPDATE users SET is_verified = 1, account_tier = 'basic', admin_note = ? WHERE user_id = ?`)
+      .run(note || 'Verified by admin', userId);
+    
     io.to(`user_${userId}`).emit('user:verified', { userId });
+    io.to(`user_${userId}`).emit('verification:complete', { verified: true });
+    
+    const user = db.prepare(`SELECT balance FROM users WHERE user_id = ?`).get(userId);
+    io.to(`user_${userId}`).emit('balance:updated', { balance: user?.balance || 0 });
+    
+    console.log(`✅ User ${userId} verified by admin`);
+    return res.json({ status: 'ok' });
+  } catch (err) {
+    return res.json({ status: 'error', message: err.message });
+  }
+});
+
+// Change user tier
+app.post('/admin/api/change_tier', verifyAdmin, (req, res) => {
+  const { userId, tier, reason } = req.body;
+  const validTiers = ['basic', 'pro', 'vip'];
+  
+  if (!validTiers.includes(tier)) {
+    return res.json({ status: 'error', message: 'Invalid tier' });
+  }
+  
+  try {
+    db.prepare(`UPDATE users SET account_tier = ?, upgrade_date = strftime('%s', 'now'), admin_note = ? WHERE user_id = ?`)
+      .run(tier, reason || `Tier changed to ${tier}`, userId);
+    
+    io.to(`user_${userId}`).emit('tier:updated', { tier: tier });
+    io.to(`user_${userId}`).emit('balance:updated', {});
+    
+    console.log(`👑 User ${userId} tier changed to ${tier}`);
     return res.json({ status: 'ok' });
   } catch (err) {
     return res.json({ status: 'error', message: err.message });
@@ -744,7 +748,7 @@ app.post('/admin/api/update_withdrawal', verifyAdmin, (req, res) => {
     if (status === 'rejected') {
       db.prepare(`UPDATE withdrawals SET status = ?, reject_reason = ?, processed_at = strftime('%s', 'now') 
         WHERE id = ?`).run(status, rejectReason, withdrawalId);
-      // Refund balance
+      
       const user = db.prepare(`SELECT * FROM users WHERE user_id = ?`).get(withdrawal.user_id);
       if (user) {
         db.prepare(`UPDATE users SET balance = balance + ? WHERE user_id = ?`).run(withdrawal.amount, withdrawal.user_id);
@@ -868,7 +872,7 @@ app.post('/admin/api/save_config', verifyAdmin, (req, res) => {
   const configs = req.body;
   try {
     for (const [key, value] of Object.entries(configs)) {
-      if (value !== undefined && key !== 'maintenance' && key !== 'maintenanceMsg') {
+      if (value !== undefined) {
         db.prepare(`INSERT OR REPLACE INTO system_config (key, value) VALUES (?, ?)`).run(key, String(value));
       }
     }

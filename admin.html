@@ -401,7 +401,49 @@
                     </button>
                 </div>
             </div>
-
+<!-- Konfigurasi Referral & Harga Paket -->
+<div class="bg-slate-900/60 border border-emerald-500/20 rounded-2xl p-4 mt-3">
+    <p class="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-3">👥 Konfigurasi Referral & Paket</p>
+    <div class="space-y-2.5">
+        <div class="grid grid-cols-3 gap-2">
+            <div>
+                <label class="text-[8px] text-slate-500 font-bold block mb-1">Referral % (Basic)</label>
+                <input type="number" id="cfg-ref-pct-basic" step="1" placeholder="25"
+                    class="w-full bg-slate-950/80 border border-slate-700 rounded-xl px-2 py-2 text-xs text-white outline-none focus:border-emerald-500">
+            </div>
+            <div>
+                <label class="text-[8px] text-slate-500 font-bold block mb-1">Referral % (PRO)</label>
+                <input type="number" id="cfg-ref-pct-pro" step="1" placeholder="50"
+                    class="w-full bg-slate-950/80 border border-slate-700 rounded-xl px-2 py-2 text-xs text-white outline-none focus:border-emerald-500">
+            </div>
+            <div>
+                <label class="text-[8px] text-slate-500 font-bold block mb-1">Referral % (VIP)</label>
+                <input type="number" id="cfg-ref-pct-vip" step="1" placeholder="75"
+                    class="w-full bg-slate-950/80 border border-slate-700 rounded-xl px-2 py-2 text-xs text-white outline-none focus:border-emerald-500">
+            </div>
+        </div>
+        <div class="grid grid-cols-3 gap-2">
+            <div>
+                <label class="text-[8px] text-slate-500 font-bold block mb-1">Biaya Verifikasi (Rp)</label>
+                <input type="number" id="cfg-verif-fee" step="1000" placeholder="17000"
+                    class="w-full bg-slate-950/80 border border-slate-700 rounded-xl px-2 py-2 text-xs text-white outline-none focus:border-emerald-500">
+            </div>
+            <div>
+                <label class="text-[8px] text-slate-500 font-bold block mb-1">Harga PRO (Rp)</label>
+                <input type="number" id="cfg-pro-price" step="5000" placeholder="85000"
+                    class="w-full bg-slate-950/80 border border-slate-700 rounded-xl px-2 py-2 text-xs text-white outline-none focus:border-emerald-500">
+            </div>
+            <div>
+                <label class="text-[8px] text-slate-500 font-bold block mb-1">Harga VIP (Rp)</label>
+                <input type="number" id="cfg-vip-price" step="10000" placeholder="170000"
+                    class="w-full bg-slate-950/80 border border-slate-700 rounded-xl px-2 py-2 text-xs text-white outline-none focus:border-emerald-500">
+            </div>
+        </div>
+    </div>
+    <button onclick="saveFullConfig()" class="action-btn w-full mt-3 py-2.5 bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 font-black text-xs rounded-xl hover:bg-emerald-500/30 transition-all">
+        💾 Simpan Semua Konfigurasi
+    </button>
+</div>
             <!-- Danger Zone -->
             <div class="bg-slate-900/60 border border-rose-500/20 rounded-2xl p-4">
                 <p class="text-[10px] font-black text-rose-400 uppercase tracking-widest mb-3">⚠️ Zona Berbahaya</p>
@@ -488,6 +530,30 @@
             </div>
         </div>
     </div>
+
+<!-- Actions -->
+<div class="grid grid-cols-2 gap-2 mb-2">
+    <button id="modal-ban-btn" onclick="toggleBanUser()" class="action-btn py-3 bg-rose-500/15 border border-rose-500/30 text-rose-400 font-black text-xs rounded-xl hover:bg-rose-500/25 transition-all">🚫 Ban User</button>
+    <button onclick="verifyUserManual()" class="action-btn py-3 bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-black text-xs rounded-xl hover:bg-emerald-500/25 transition-all">✅ Verif. Manual</button>
+    <button onclick="resetUserPin()" class="action-btn py-3 bg-amber-500/15 border border-amber-500/30 text-amber-400 font-black text-xs rounded-xl hover:bg-amber-500/25 transition-all">🔑 Reset PIN</button>
+    <button onclick="deleteUser()" class="action-btn py-3 bg-slate-800 border border-slate-700 text-slate-300 font-black text-xs rounded-xl hover:bg-slate-700 transition-all">🗑️ Hapus Akun</button>
+</div>
+
+<!-- BARIS BARU: Tombol Ubah Tier & Verifikasi Paksa -->
+<div class="grid grid-cols-2 gap-2 mt-2">
+    <button onclick="changeUserTier('basic')" class="action-btn py-2.5 bg-slate-800 border border-slate-700 text-slate-300 font-black text-xs rounded-xl hover:bg-slate-700 transition-all">
+        📊 Set Basic
+    </button>
+    <button onclick="changeUserTier('pro')" class="action-btn py-2.5 bg-blue-500/15 border border-blue-500/30 text-blue-400 font-black text-xs rounded-xl hover:bg-blue-500/25 transition-all">
+        ⚡ Set PRO
+    </button>
+    <button onclick="changeUserTier('vip')" class="action-btn py-2.5 bg-amber-500/15 border border-amber-500/30 text-amber-400 font-black text-xs rounded-xl hover:bg-amber-500/25 transition-all">
+        👑 Set VIP
+    </button>
+    <button onclick="toggleUserVerification()" id="modal-verify-btn" class="action-btn py-2.5 bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-black text-xs rounded-xl hover:bg-emerald-500/25 transition-all">
+        ✅ Verifikasi Ulang
+    </button>
+</div>
 
     <!-- ════ PAYMENT DETAIL MODAL ════ -->
     <div id="payment-detail-modal" class="fixed inset-0 bg-slate-950/90 hidden z-[200] flex items-end justify-center p-4 backdrop-blur-md">
@@ -1069,6 +1135,56 @@
         } catch(e) { showToast('❌ Gagal', e.message, 'rose'); }
     }
 
+// Change user tier (Basic/PRO/VIP)
+async function changeUserTier(tier) {
+    if (!selectedUser) return;
+    const note = document.getElementById('modal-admin-note').value.trim();
+    
+    try {
+        const response = await adminApi('change_tier', { 
+            userId: selectedUser.userId, 
+            tier: tier,
+            reason: note || `Tier changed to ${tier.toUpperCase()}`
+        });
+        
+        if (response.status === 'ok') {
+            showToast('✅ Tier diubah', `${selectedUser.userId} → ${tier.toUpperCase()}`, 'emerald');
+            selectedUser.account_tier = tier;
+            await loadUsers();
+            closeUserModal();
+        } else {
+            showToast('❌ Gagal', response.message, 'rose');
+        }
+    } catch (err) {
+        showToast('❌ Gagal', err.message, 'rose');
+    }
+}
+
+// Force verification (buka gembok akun)
+async function toggleUserVerification() {
+    if (!selectedUser) return;
+    const note = document.getElementById('modal-admin-note').value.trim();
+    
+    try {
+        const response = await adminApi('verify_user', { 
+            userId: selectedUser.userId, 
+            note: note || 'Verified by admin'
+        });
+        
+        if (response.status === 'ok') {
+            showToast('✅ Akun diverifikasi', selectedUser.userId, 'emerald');
+            selectedUser.isVerified = true;
+            selectedUser.account_tier = 'basic';
+            await loadUsers();
+            closeUserModal();
+        } else {
+            showToast('❌ Gagal', response.message, 'rose');
+        }
+    } catch (err) {
+        showToast('❌ Gagal', err.message, 'rose');
+    }
+}
+
     // ── PAYMENTS ───────────────────────────────────────────────────────────────
     async function loadPayments(status = 'pending') {
         currentPaymentFilter = status;
@@ -1213,18 +1329,39 @@
         } catch(e) {}
     }
 
-    async function saveConfig() {
-        const cfg = {
-            miningRate:   parseFloat(document.getElementById('cfg-mining-rate').value)   || 0.005,
-            welcomeBonus: parseFloat(document.getElementById('cfg-welcome-bonus').value) || 5,
-            minWithdraw:  parseFloat(document.getElementById('cfg-min-wd').value)        || 10,
-        };
-        try {
-            await adminApi('save_config', cfg);
-            showToast('💾 Konfigurasi Disimpan', 'Perubahan langsung aktif.', 'emerald');
-            if (socket) socket.emit('admin:config_update', cfg);
-        } catch(e) { showToast('❌ Gagal', e.message, 'rose'); }
-    }
+async function saveConfig() {
+    const cfg = {
+        miningRate: parseFloat(document.getElementById('cfg-mining-rate').value) || 0.005,
+        welcomeBonus: parseFloat(document.getElementById('cfg-welcome-bonus').value) || 5,
+        minWithdraw: parseFloat(document.getElementById('cfg-min-wd').value) || 10,
+    };
+    try {
+        await adminApi('save_config', cfg);
+        showToast('💾 Konfigurasi Disimpan', 'Perubahan langsung aktif.', 'emerald');
+        if (socket) socket.emit('admin:config_update', cfg);
+    } catch(e) { showToast('❌ Gagal', e.message, 'rose'); }
+}
+
+// Fungsi baru untuk simpan semua config (termasuk referral)
+async function saveFullConfig() {
+    const cfg = {
+        mining_rate: parseFloat(document.getElementById('cfg-mining-rate').value) || 0.005,
+        welcome_bonus: parseFloat(document.getElementById('cfg-welcome-bonus').value) || 5,
+        min_withdraw: parseFloat(document.getElementById('cfg-min-wd').value) || 10,
+        referral_pct_basic: parseInt(document.getElementById('cfg-ref-pct-basic').value) || 25,
+        referral_pct_pro: parseInt(document.getElementById('cfg-ref-pct-pro').value) || 50,
+        referral_pct_vip: parseInt(document.getElementById('cfg-ref-pct-vip').value) || 75,
+        verification_fee: parseInt(document.getElementById('cfg-verif-fee').value) || 17000,
+        pro_price: parseInt(document.getElementById('cfg-pro-price').value) || 85000,
+        vip_price: parseInt(document.getElementById('cfg-vip-price').value) || 170000
+    };
+    
+    try {
+        await adminApi('save_config', cfg);
+        showToast('💾 Semua Konfigurasi Disimpan', 'Perubahan langsung aktif.', 'emerald');
+        if (socket) socket.emit('admin:config_update', cfg);
+    } catch(e) { showToast('❌ Gagal', e.message, 'rose'); }
+}
 
     async function toggleMaintenance(enabled) {
         const msg = document.getElementById('maintenance-msg').value.trim();
