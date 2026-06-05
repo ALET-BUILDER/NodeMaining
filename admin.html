@@ -1103,16 +1103,41 @@
         } catch(e) { showToast('❌ Gagal', e.message, 'rose'); }
     }
 
-    async function verifyUserManual() {
-        if (!selectedUser) return;
-        const note = document.getElementById('modal-admin-note').value.trim();
-        try {
-            await adminApi('verify_user', { userId: selectedUser.userId, note });
-            showToast('✅ User diverifikasi', selectedUser.userId, 'emerald');
+async function verifyUserManual() {
+    if (!selectedUser) return;
+    const note = document.getElementById('modal-admin-note').value.trim();
+    
+    console.log('🔧 Verifying user:', selectedUser.userId);
+    
+    try {
+        const response = await adminApi('verify_user', { 
+            userId: selectedUser.userId, 
+            note: note || 'Verified by admin'
+        });
+        
+        console.log('📡 Verify response:', response);
+        
+        if (response.status === 'ok') {
+            showToast('✅ User diverifikasi!', selectedUser.userId, 'emerald');
+            
+            // Update local data
+            selectedUser.isVerified = true;
+            selectedUser.account_tier = 'basic';
+            
+            // Refresh user list
+            await loadUsers();
             closeUserModal();
-            loadUsers();
-        } catch(e) { showToast('❌ Gagal', e.message, 'rose'); }
+            
+            // Optional: reload dashboard stats
+            loadDashboardData();
+        } else {
+            showToast('❌ Gagal verifikasi', response.message || 'Unknown error', 'rose');
+        }
+    } catch(e) { 
+        console.error('Verify error:', e);
+        showToast('❌ Gagal', e.message, 'rose'); 
     }
+}
 
     async function resetUserPin() {
         if (!selectedUser) return;
