@@ -9,7 +9,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     
-    <title>Dashboard Penghasilan</title>
+    <title>Node Maning — Cloud Mining</title>
 
     <!-- [PWA] Biar web bisa dipasang / dibungkus jadi APK lewat PWABuilder -->
     <link rel="manifest" href="manifest.json">
@@ -29,8 +29,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Tambahan Script Confetti -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
-    <!-- [KEAMANAN] Cloudflare Turnstile (CAPTCHA anti-bot pendaftaran) -->
-    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    <!-- [KEAMANAN] Proteksi login dengan rate-limiting server-side -->
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #1e293b; -webkit-font-smoothing: antialiased; }
         
@@ -202,7 +201,7 @@
                         <svg class="h-10 w-10 text-white drop-shadow-lg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                     </div>
                 </div>
-                <h1 class="font-black text-5xl tracking-tighter text-white mb-2" style="text-shadow:0 0 30px rgba(59,130,246,0.6)">AUTO<span style="background:linear-gradient(135deg,#60a5fa,#818cf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">CUAN</span></h1>
+                <h1 class="font-black text-5xl tracking-tighter text-white mb-2" style="text-shadow:0 0 30px rgba(59,130,246,0.6)">NODE<span style="background:linear-gradient(135deg,#60a5fa,#818cf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">MANING</span></h1>
                 <p class="text-slate-400 text-sm font-medium tracking-widest uppercase">PRO Cloud Mining Protocol</p>
 
                 <!-- Live stats bar -->
@@ -259,8 +258,7 @@
                             <input type="password" maxlength="1" class="pin-box login-pin !bg-slate-950 !border-slate-700 focus:!border-blue-500 !h-12 !w-10 !rounded-xl" inputmode="numeric">
                         </div>
                     </div>
-                    <div id="login-cf-box" class="hidden mb-3 flex justify-center"></div>
-                    <button id="btn-process-login" onclick="loginWithExistingId()"
+                                        <button id="btn-process-login" onclick="loginWithExistingId()"
                         class="w-full text-white font-black py-4 rounded-xl text-sm active:scale-95 tracking-wide flex justify-center items-center gap-2 transition-all"
                         style="background:linear-gradient(135deg,#1d4ed8,#2563eb);box-shadow:0 0 20px rgba(37,99,235,0.4);border:1px solid rgba(59,130,246,0.4)">
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
@@ -292,9 +290,9 @@
 
             <!-- Footer -->
             <div class="mt-5 space-y-3">
-                <a href="https://t.me/nodemasterr" target="_blank" class="flex items-center justify-center gap-2 w-full py-3 rounded-2xl font-bold text-sm transition-all active:scale-95" style="background:rgba(34,158,217,0.1);border:1px solid rgba(34,158,217,0.25);color:#5ab9f0">
+                <a href="https://whatsapp.com/channel/0029VbCRVNN0G0XkJ7oPH43P" target="_blank" class="flex items-center justify-center gap-2 w-full py-3 rounded-2xl font-bold text-sm transition-all active:scale-95" style="background:rgba(34,158,217,0.1);border:1px solid rgba(34,158,217,0.25);color:#5ab9f0">
                     <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
-                    Komunitas Telegram — @nodemasterr
+                    Komunitas Saluran WhatsApp 
                 </a>
                 <div class="text-center">
                     <p class="text-[10px] text-slate-600 font-mono tracking-widest uppercase flex items-center justify-center gap-2">
@@ -304,7 +302,7 @@
                     <p class="mt-2">
                         <a href="disclaimer.html" target="_blank" class="text-[10px] text-slate-500 hover:text-blue-400 underline underline-offset-2 transition-colors">Kebijakan Privasi &amp; Syarat Ketentuan</a>
                     </p>
-                    <p class="mt-1.5 text-[10px] text-slate-500">Butuh bantuan? <a href="mailto:support@nodemaster.cloud" class="text-blue-400 hover:text-blue-300 underline underline-offset-2">support@nodemaster.cloud</a></p>
+                    <p class="mt-1.5 text-[10px] text-slate-500">Butuh bantuan? <a href="mailto:nodemainin@gmail.com" class="text-blue-400 hover:text-blue-300 underline underline-offset-2">support</a></p>
                 </div>
             </div>
         </div>
@@ -332,7 +330,7 @@
                 <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4 shadow-[0_0_30px_rgba(59,130,246,0.4)]" style="background:linear-gradient(135deg,rgba(59,130,246,0.25),rgba(99,102,241,0.18));border:1px solid rgba(59,130,246,0.4)">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                 </div>
-                <h1 class="text-3xl font-black text-white tracking-tighter drop-shadow-md">AUTO<span class="text-blue-400">CUAN</span></h1>
+                <h1 class="text-3xl font-black text-white tracking-tighter drop-shadow-md">NODE<span class="text-blue-400">MANING</span></h1>
                 <p class="text-slate-400 text-xs mt-1 font-medium tracking-wide">Buat akun gratis & mulai mining sekarang</p>
             </div>
 
@@ -398,9 +396,9 @@
             </div>
 
             <!-- Telegram CTA -->
-            <a href="https://t.me/nodemasterr" target="_blank" class="mt-4 flex items-center justify-center gap-2 text-[11px] text-slate-500 hover:text-slate-300 transition-colors py-2">
+            <a href="https://whatsapp.com/channel/0029VbCRVNN0G0XkJ7oPH43P" target="_blank" class="mt-4 flex items-center justify-center gap-2 text-[11px] text-slate-500 hover:text-slate-300 transition-colors py-2">
                 <svg class="h-3.5 w-3.5 text-[#229ED9]" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
-                Bergabung dengan komunitas WhatsApp 
+                Bergabung dengan komunitas WhatsApp
             </a>
 
         </div>
@@ -435,14 +433,6 @@
                 <input type="password" maxlength="1" class="pin-box reg-pin !bg-slate-900/80 !border-slate-700 focus:!border-blue-500 !text-white !h-12 !w-10 !rounded-xl shadow-inner" inputmode="numeric">
             </div>
 
-            <!-- [KEAMANAN] CAPTCHA Cloudflare Turnstile — tak terlihat untuk user asli,
-                 hanya menantang yang mencurigakan. Token dikirim saat daftar. -->
-            <div id="cf-turnstile-box" class="cf-turnstile mb-4 flex justify-center relative z-10"
-                 data-sitekey="0x4AAAAAADbcXjjtzcvXCN8w"
-                 data-callback="onTurnstileSuccess"
-                 data-expired-callback="onTurnstileExpired"
-                 data-error-callback="onTurnstileExpired"
-                 data-size="flexible"></div>
 
             <div class="flex gap-3 w-full relative z-10">
                 <button onclick="closePinCreationModal()" class="w-1/3 bg-slate-800/80 border border-slate-700 hover:bg-slate-700 text-slate-300 font-bold py-3.5 rounded-xl transition-all text-xs tracking-wider">Batal</button>
@@ -662,7 +652,7 @@
                 <!-- Aksi -->
                 <div class="space-y-2 mb-4">
                     <button onclick="closeProfileModal(); if(typeof openAiChat==='function')openAiChat();" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-white/[0.04] border border-white/10 text-slate-300 hover:text-white hover:bg-white/[0.07] transition-all text-[12px] font-bold active:scale-[0.98]">💬 Bantuan / Customer Support</button>
-                    <a href="mailto:support@nodemaster.cloud" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-white/[0.04] border border-white/10 text-slate-300 hover:text-white hover:bg-white/[0.07] transition-all text-[12px] font-bold">📧 Email: support@nodemaining</a>
+                    <a href="mailto:nodemainin@gmail.com" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-white/[0.04] border border-white/10 text-slate-300 hover:text-white hover:bg-white/[0.07] transition-all text-[12px] font-bold">📧 Email: nodemainin@gmail.com</a>
                     <a href="https://t.me/nodemasterr" target="_blank" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-white/[0.04] border border-white/10 text-slate-300 hover:text-white hover:bg-white/[0.07] transition-all text-[12px] font-bold">✈️ Komunitas Telegram</a>
                     <a href="disclaimer.html" target="_blank" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-white/[0.04] border border-white/10 text-slate-300 hover:text-white hover:bg-white/[0.07] transition-all text-[12px] font-bold">📄 Kebijakan Privasi &amp; Syarat Ketentuan</a>
                 </div>
@@ -2262,8 +2252,12 @@
     <!-- Papan Klasemen Sultan (Leaderboard) DIPINDAH/DIHAPUS untuk Kerapian -->
 
     <script>
-        // --- KONFIGURASI URL API ANDA ---
-        const API_URL = "https://nodemaster.cloud/app/api.php";
+        // --- KONFIGURASI URL API ---
+        // Auto-detect: pakai path relatif agar bisa deploy di Vercel/Railway tanpa edit
+        const _host = window.location.origin;
+        const API_URL = _host.includes('localhost') || _host.includes('127.0.0.1')
+            ? '/api.php'
+            : (_host + '/api.php');
 
         // [SISTEM BARU] Konfigurasi reward referral — diisi dari server (load_data)
         // agar teks & estimasi di UI SELALU sinkron dgn persen yang diatur admin.
@@ -3066,7 +3060,7 @@
                 // [FIX BUG8] PIN dikirim via POST body — tidak muncul di URL/server log
                 const fetchUrl = `${API_URL}?action=load_data&user_id=${userId}&_t=${Date.now()}`;
                 const fetchOpts = pin
-                    ? { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({pin, cf_token: window.__cfTokenLogin || ''}) }
+                    ? { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({pin}) }
                     : {};
 
                 const response = await fetch(fetchUrl, fetchOpts);
@@ -3291,33 +3285,7 @@
             }, 300);
         }
 
-        // [KEAMANAN] Token CAPTCHA Cloudflare Turnstile (untuk pendaftaran akun baru).
-        // Diisi otomatis oleh widget via callback; dikosongkan saat kadaluwarsa/error.
-        window.__cfToken = '';
-        function onTurnstileSuccess(token) { window.__cfToken = token || ''; }
-        function onTurnstileExpired()       { window.__cfToken = ''; }
-
-        // [KEAMANAN LOGIN] Turnstile khusus login — muncul setelah beberapa kali PIN salah.
-        window.__cfTokenLogin = '';
-        function onLoginTurnstile(token)   { window.__cfTokenLogin = token || ''; }
-        function onLoginTurnstileExpired() { window.__cfTokenLogin = ''; }
-        var _loginCfRendered = false;
-        function showLoginCaptcha() {
-            var box = document.getElementById('login-cf-box');
-            if (!box) return;
-            box.classList.remove('hidden');
-            try {
-                if (!_loginCfRendered && window.turnstile && typeof turnstile.render === 'function') {
-                    turnstile.render('#login-cf-box', {
-                        sitekey: '0x4AAAAAADbcXjjtzcvXCN8w',
-                        callback: onLoginTurnstile,
-                        'expired-callback': onLoginTurnstileExpired,
-                        'error-callback': onLoginTurnstileExpired
-                    });
-                    _loginCfRendered = true;
-                }
-            } catch (e) {}
-        }
+        // [DIHAPUS] Cloudflare Turnstile — verifikasi bot ditangani server-side
 
         // FITUR BARU: Parameter isRegister untuk memberi tahu server
         async function saveData(isRegister = false) {
@@ -3349,10 +3317,7 @@
                 isRegister: isRegister // Penanda mutlak ke server
             };
 
-            // [KEAMANAN] Sertakan token CAPTCHA Turnstile hanya saat pendaftaran baru.
-            if (isRegister) {
-                payload.cfToken = window.__cfToken || '';
-            }
+            // [KEAMANAN] Proteksi bot ditangani server-side (rate limiting, IP check).
 
             // Kirim PIN jika ada (saat daftar baru atau update user lama)
             if (userPinCode) {
@@ -4032,7 +3997,7 @@
         // [BARU] Helper berbagi link undangan. getRefLink() = link ber-kode
         // otomatis (sama format dgn copyAffDashLink). Semua murni frontend.
         function getRefLink() {
-            return "https://nodemaster.cloud/app/?ref=" + (appData.userId || '');
+            return window.location.origin + "/app/?ref=" + (appData.userId || '');
         }
         function getRefShareMsg() {
             return "🎁 Daftar aplikasi penghasil Dollar ini pakai kode undangan saya & langsung dapat bonus $5! Klik: " + getRefLink();
@@ -4348,7 +4313,7 @@
 
         function copyAffDashLink() {
             // FITUR BARU: URL dan Teks Salinan yang disempurnakan (memuat link & kode manual)
-            const domain = "https://nodemaster.cloud/app/?ref=" + appData.userId;
+            const domain = window.location.origin + "/app/?ref=" + appData.userId;
             const refCode = appData.userId;
             const templates = [
                 "🚨 VIRAL! Nemu aplikasi penghasil Dollar tanpa modal! Daftar langsung dikasih $5 (Rp80rb) gratis. 😱🔥\n\nBuruan klik link VIP di bawah ini buat daftar. Kuota terbatas! 👇\n" + domain + "\n\nAtau masukkan kode undangan manual: *" + refCode + "*\n\n(Link di atas sudah tertanam kode otomatis, saldo $5 langsung masuk ke akun lu!) 🚀",
@@ -5776,7 +5741,6 @@
             modal.classList.remove('hidden');
             setTimeout(() => { box.classList.remove('scale-95','opacity-0'); box.classList.add('scale-100','opacity-100'); }, 10);
         }
-
         function closeRegisterDisclaimerModal() {
             const modal = document.getElementById('register-disclaimer-modal');
             const box   = modal.querySelector('div');
@@ -6365,11 +6329,6 @@
                     if (errEl) { errEl.innerText = '⚠️ Terlalu banyak percobaan login. Coba lagi nanti ya (demi keamanan akunmu).'; errEl.classList.remove('hidden'); }
                     return;
                 }
-                if (result.error === 'captcha_required') {
-                    if (typeof showLoginCaptcha === 'function') showLoginCaptcha();
-                    if (errEl) { errEl.innerText = '🔒 Verifikasi keamanan: selesaikan kotak di bawah, lalu tekan Akses Dashboard lagi.'; errEl.classList.remove('hidden'); }
-                    return;
-                }
 
                 if (result.appData) {
                     // ========== LOGIN SUKSES ==========
@@ -6497,7 +6456,7 @@
             const regGmailVal = regGmailInput ? regGmailInput.value.trim().toLowerCase() : '';
             
             if (!regGmailVal || !regGmailVal.includes('@') || !regGmailVal.includes('.')) {
-                showAlert("Gmail Wajib Diisi ✉️", "Masukkan Gmail yang Anda gunakan di Lynk.id untuk upgrade otomatis.");
+                showAlert("Gmail Wajib Diisi ✉️", "Masukkan Gmail yang valid untuk keperluan upgrade akun.");
                 if (regGmailInput) regGmailInput.focus();
                 return;
             }
@@ -6507,210 +6466,100 @@
                 return;
             }
 
-            // [KEAMANAN] Pastikan token CAPTCHA Turnstile sudah siap sebelum buat akun.
-            if (!window.__cfToken) {
-                showAlert("Verifikasi Keamanan ⏳", "Mohon tunggu sebentar hingga verifikasi keamanan selesai (atau muat ulang halaman), lalu coba lagi.");
-                return;
-            }
-
             const btnReg = document.getElementById('btn-execute-reg');
-            const originalBtnText = btnReg.innerText;
+            const originalBtnText = btnReg ? btnReg.innerText : '';
+            if (btnReg) { btnReg.innerText = "Memproses..."; btnReg.classList.add('opacity-50','pointer-events-none'); }
 
-            let isSuccess = false;
-            let finalEmail = "";
             const refCode = document.getElementById('input-ref-code') ? document.getElementById('input-ref-code').value.trim().toUpperCase() : '';
-            const regGmail = regGmailVal; // Gmail dari PIN modal
-            
-            // FITUR BARU: Validasi Kode Undangan ke Server SEBELUM membuat akun
+            const regGmail = regGmailVal;
+
+            // Validasi kode referral ke server (opsional — kalau gagal lanjutkan saja)
             if (refCode && API_URL) {
-                btnReg.innerText = "Memeriksa Kode...";
-                btnReg.classList.add('opacity-50', 'pointer-events-none');
                 try {
                     const refCheck = await fetch(`${API_URL}?action=check_ref&ref=${refCode}`);
                     const refData = await refCheck.json();
-                    if (refData.status === 'error' && refData.message !== 'Aksi tidak valid.') {
-                        showAlert("Kode Salah ⚠️", refData.message || "Kode undangan yang Anda masukkan tidak terdaftar di sistem.");
-                        btnReg.innerText = originalBtnText;
-                        btnReg.classList.remove('opacity-50', 'pointer-events-none');
-                        closePinCreationModal(); // Tutup modal pin agar user bisa memperbaiki kode
-                        return; // Hentikan registrasi
-                    }
-                } catch(e) {
-                    console.log("Pengecekan kode tertunda karena jaringan.");
-                }
-            }
-
-            if (level === 'basic') {
-                appData.accountTier = 'trial';
-                appData.serverVerified = false;
-                isSuccess = true;
-            } else {
-                finalEmail = document.getElementById('reg-email-' + level).value.trim();
-                const targetTier = level === 'pro' ? 'PRO' : 'VIP';
-                
-                btnReg.innerText = "Memvalidasi Pembayaran...";
-                btnReg.classList.add('opacity-50', 'pointer-events-none');
-
-                if (API_URL) {
-                    try {
-                        const response = await fetch(`${API_URL}?action=verify_upgrade&email=${encodeURIComponent(finalEmail)}&tier=${targetTier}`);
-                        const data = await response.json();
-
-                        if (data.status === 'error') {
-                            let errMsg = "Terjadi kesalahan pada server.";
-                            if (data.message === 'INSUFFICIENT_FUNDS_VIP') errMsg = "Pembayaran kurang. Paket VIP seharga Rp 800.000.";
-                            else if (data.message === 'INSUFFICIENT_FUNDS_PRO') errMsg = "Pembayaran kurang. Paket PRO seharga Rp 160.000.";
-                            else if (data.message === 'PAYMENT_NOT_FOUND') errMsg = "Pembayaran belum masuk ke server atau email salah. Pastikan email sesuai Lynk.id.";
-                            else errMsg = "Error: " + data.message;
-                            
-                            showAlert("Validasi Gagal ⚠️", errMsg);
-                            btnReg.innerText = originalBtnText;
-                            btnReg.classList.remove('opacity-50', 'pointer-events-none');
-                            return; 
-                        }
-                        
-                        if (level === 'pro') {
-                            appData.accountTier = 'pro'; appData.serverVerified = false; isSuccess = true;
-                        } else if (level === 'vip') {
-                            appData.accountTier = 'vip'; appData.serverVerified = false; isSuccess = true;
-                        }
-                    } catch (e) {
-                        showAlert("Gangguan Server ⚠️", "Gagal memvalidasi pembayaran ke server. Coba lagi.");
-                        btnReg.innerText = originalBtnText;
-                        btnReg.classList.remove('opacity-50', 'pointer-events-none');
+                    if (refData.status === 'error' && refData.message && !refData.message.includes('tidak valid')) {
+                        showAlert("Kode Salah ⚠️", refData.message || "Kode undangan tidak terdaftar.");
+                        if (btnReg) { btnReg.innerText = originalBtnText; btnReg.classList.remove('opacity-50','pointer-events-none'); }
+                        closePinCreationModal();
                         return;
                     }
-                }
+                } catch(e) { /* Abaikan jika jaringan gagal */ }
             }
 
-            if (isSuccess) {
-                // [FIX SESI BERAKHIR] Simpan snapshot state sebelum register
-                // agar jika gagal kita bisa rollback dan user tidak terjebak
-                // dengan state "isLoggedIn=true tapi server kosong".
-                const _prevUserId      = appData.userId;
-                const _prevIsLoggedIn  = appData.isLoggedIn;
-                const _prevStartDate   = appData.startDate;
-                const _prevHasRefCode  = appData.hasEnteredRefCode;
-                const _prevPaymentEmail= appData.paymentEmail;
-                const _prevGmailConf   = appData.gmailConfirmed;
-                const _prevAccountTier = appData.accountTier;
-                const _prevServerVerif = appData.serverVerified;
+            // Siapkan data akun baru
+            const newUserId = 'USR-' + Math.random().toString(36).substr(2, 6).toUpperCase();
+            userPinCode = pin;
+            try { sessionStorage.setItem("aiCachedPin", pin); localStorage.setItem("aiCachedPin", pin); } catch(e) {}
 
-                appData.userId = 'USR-' + Math.random().toString(36).substr(2, 6).toUpperCase();
-                userPinCode = pin; try{sessionStorage.setItem("aiCachedPin",pin);localStorage.setItem("aiCachedPin",pin);}catch(e){}
-                if (finalEmail) appData.paymentEmail = finalEmail;
-                // Gmail dari form registrasi → paymentEmail
-                if (regGmail && !appData.paymentEmail) appData.paymentEmail = regGmail;
-                if (regGmail) appData.gmailConfirmed = true; // user baru sudah konfirmasi
-                appData.isLoggedIn = true;
-                appData.startDate = Date.now();
+            appData.userId         = newUserId;
+            appData.paymentEmail   = regGmail;
+            appData.gmailConfirmed = true;
+            appData.isLoggedIn     = true;
+            appData.startDate      = Date.now();
+            appData.accountTier    = 'trial';
+            appData.serverVerified = false;
+            window._justRegisteredAt = Date.now();
 
-                // [BUG CRITICAL FIX] JANGAN pre-set hasEnteredRefCode di sini.
-                // Backend (case 'add') akan set sendiri SETELAH insert ke tabel
-                // referrals berhasil + kredit $5. Pre-set di sini menyebabkan
-                // gerbang anti-double di backend langsung menolak action=add →
-                // referral & $5 hilang untuk SEMUA user baru yg pakai kode.
+            // Simpan lokal DULU agar user tidak kehilangan akun meski internet putus
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(appData)); } catch(e) {}
 
-                // [CRITICAL PATCH] Kunci Kebangkitan & Mencegah Race Condition
-                // Menggunakan 'await' agar kode di bawahnya TIDAK dieksekusi sebelum akun benar-benar tercipta di MySQL
-                btnReg.innerText = "Mendaftarkan Akun...";
+            if (btnReg) btnReg.innerText = "Mendaftarkan Akun...";
 
-                // [FIX SESI BERAKHIR] Tandai timestamp register agar grace period
-                // di sync loop tidak salah men-trigger "Sesi Berakhir" jika
-                // tick polling jalan duluan sebelum INSERT terdeteksi.
-                window._justRegisteredAt = Date.now();
+            // Coba simpan ke server
+            let saveResult = null;
+            try {
+                saveResult = await saveDataToServer(true);
+            } catch(e) {
+                saveResult = { status: 'network_error', message: 'NETWORK_ERROR' };
+            }
 
-                const saveResult = await saveData(true);
-
-                // [FIX SESI BERAKHIR] Validasi MUTLAK hasil save sebelum lanjut.
-                // Jika gagal: rollback state lokal, hapus localStorage, beri tahu
-                // user, biarkan mereka mencoba ulang.
-                const _rollback = () => {
-                    appData.userId           = _prevUserId;
-                    appData.isLoggedIn       = _prevIsLoggedIn;
-                    appData.startDate        = _prevStartDate;
-                    appData.hasEnteredRefCode= _prevHasRefCode;
-                    appData.paymentEmail     = _prevPaymentEmail;
-                    appData.gmailConfirmed   = _prevGmailConf;
-                    appData.accountTier      = _prevAccountTier;
-                    appData.serverVerified   = _prevServerVerif;
+            // Jika server tidak tersedia, tetap lanjutkan (mode offline)
+            // Akun tersimpan lokal, akan sync otomatis saat online
+            if (!saveResult || saveResult.status === 'network_error' || saveResult.message === 'NETWORK_ERROR') {
+                console.warn('Server tidak tersedia saat registrasi. Akun tersimpan lokal.');
+                // Tetap lanjutkan — jangan rollback
+            } else if (saveResult.status === 'error') {
+                if (saveResult.message === 'GMAIL_TAKEN') {
+                    // Rollback hanya jika gmail sudah dipakai
+                    appData.userId = '';
+                    appData.isLoggedIn = false;
+                    appData.paymentEmail = '';
+                    appData.gmailConfirmed = false;
                     localStorage.removeItem(STORAGE_KEY);
                     window._justRegisteredAt = 0;
-                    btnReg.innerText = originalBtnText;
-                    btnReg.classList.remove('opacity-50', 'pointer-events-none');
-                };
-
-                if (!saveResult || saveResult.status !== 'success') {
-                    // GMAIL_TAKEN — tampilkan pesan khusus
-                    if (saveResult && saveResult.message === 'GMAIL_TAKEN') {
-                        _rollback();
-                        showAlert('Gmail Sudah Terdaftar ⚠️',
-                            saveResult.desc || 'Gmail ini sudah digunakan akun lain. Gunakan Gmail yang berbeda.');
-                        return;
-                    }
-                    // USER_ID_DUPLICATE — bentrok kode acak (sangat jarang)
-                    if (saveResult && saveResult.message === 'USER_ID_DUPLICATE') {
-                        _rollback();
-                        showAlert('Kode Bentrok ⚠️',
-                            'Kode pengguna otomatis bentrok. Silakan coba daftar lagi (sekali klik biasanya cukup).');
-                        return;
-                    }
-                    // BANNED — IP/akun diblokir
-                    if (saveResult && saveResult.message === 'BANNED') {
-                        _rollback();
-                        showAlert('Akses Ditolak 🚫',
-                            'Pendaftaran tidak dapat dilanjutkan dari perangkat/IP ini.');
-                        return;
-                    }
-                    // Network / server / DB error — semua kasus lainnya
-                    _rollback();
-                    let errMsg = 'Gagal menyimpan akun ke server. ';
-                    if (saveResult && saveResult.message === 'NETWORK_ERROR') {
-                        errMsg += 'Koneksi internet bermasalah. Cek sinyal Anda lalu coba lagi.';
-                    } else if (saveResult && saveResult.message === 'INVALID_RESPONSE') {
-                        errMsg += 'Server sedang gangguan. Mohon coba beberapa saat lagi.';
-                    } else if (saveResult && saveResult.desc) {
-                        errMsg += saveResult.desc;
-                    } else {
-                        errMsg += 'Mohon coba lagi.';
-                    }
-                    showAlert('Pendaftaran Gagal ⚠️', errMsg);
+                    if (btnReg) { btnReg.innerText = originalBtnText; btnReg.classList.remove('opacity-50','pointer-events-none'); }
+                    showAlert('Gmail Sudah Terdaftar ⚠️', saveResult.desc || 'Gmail ini sudah digunakan akun lain. Gunakan Gmail berbeda.');
                     return;
                 }
-
-                // 2. Jika ada kode referal, tembak API Add Referal SEKARANG
-                if (refCode && API_URL) {
-                    fetch(`${API_URL}?action=add&ref=${refCode}&new_user=${appData.userId}`)
-                      .then(r => r.json())
-                      .then(d => {
-                          // [BUG FIX] Surface error: dulu gagal disembunyikan → user
-                          // & pengundang tidak tahu referral tak masuk + $5 hilang.
-                          if (d && d.status === 'error') {
-                              console.warn('Klaim kode referral gagal:', d.message);
-                              if (typeof showAlert === 'function') {
-                                  showAlert('Kode Referral Tidak Terklaim ⚠️',
-                                      (d.message || 'Gagal mengklaim kode.') +
-                                      '\n\nAkun Anda tetap aktif, tapi bonus $5 & hubungan referral TIDAK tercatat. Hubungi admin jika ini keliru.');
-                              }
-                          }
-                          // Tarik ulang data dari server untuk mendapatkan injeksi saldo $5
-                          setTimeout(() => { serverSyncLoop(); }, 1500);
-                      })
-                      .catch(e => { console.warn('Add referral request error:', e); });
+                if (saveResult.message === 'USER_ID_DUPLICATE') {
+                    // Generate ulang ID baru
+                    appData.userId = 'USR-' + Math.random().toString(36).substr(2, 6).toUpperCase();
+                    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(appData)); } catch(e) {}
+                    try { await saveDataToServer(true); } catch(e) {}
                 }
-
-                btnReg.innerText = originalBtnText;
-                btnReg.classList.remove('opacity-50', 'pointer-events-none');
-
-                closePinCreationModal();
-                document.getElementById('register-screen').classList.add('hidden');
-                
-                document.getElementById('generated-user-id').innerText = appData.userId;
-                const genModal = document.getElementById('id-generation-modal');
-                genModal.classList.remove('hidden');
-                setTimeout(() => genModal.classList.remove('opacity-0'), 10);
+                // Error lainnya: tetap lanjutkan dengan data lokal
             }
+
+            // Klaim referral di background
+            if (refCode && API_URL && appData.userId) {
+                fetch(`${API_URL}?action=add&ref=${refCode}&new_user=${appData.userId}`)
+                    .then(r => r.json())
+                    .then(d => {
+                        if (d && d.status !== 'error') setTimeout(() => { serverSyncLoop(); }, 1500);
+                    }).catch(() => {});
+            }
+
+            if (btnReg) { btnReg.innerText = originalBtnText; btnReg.classList.remove('opacity-50','pointer-events-none'); }
+            closePinCreationModal();
+            document.getElementById('register-screen').classList.add('hidden');
+            
+            document.getElementById('generated-user-id').innerText = appData.userId;
+            const genModal = document.getElementById('id-generation-modal');
+            genModal.classList.remove('hidden');
+            setTimeout(() => genModal.classList.remove('opacity-0'), 10);
         }
+
 
         function copyGeneratedId() {
             const tempInput = document.createElement("input");
@@ -7077,7 +6926,7 @@
             <div class="absolute -top-16 -right-16 w-40 h-40 bg-indigo-500/15 rounded-full blur-3xl pointer-events-none"></div>
             <div class="relative z-10">
                 <div class="w-14 h-14 mx-auto rounded-2xl bg-indigo-500/15 border border-indigo-500/30 grid place-items-center text-2xl mb-3">📣</div>
-                <h3 class="text-center text-white font-black text-lg leading-tight">Tahu NodeMaster dari mana?</h3>
+                <h3 class="text-center text-white font-black text-lg leading-tight">Tahu Node Maning dari mana?</h3>
                 <p class="text-center text-slate-400 text-xs mt-1.5 mb-5">Wajib pilih salah satu untuk lanjut ya 🙏 (cukup sekali kok)</p>
                 <div class="grid grid-cols-2 gap-2.5">
                     <button onclick="submitSource('tiktok',this)" class="flex items-center justify-center gap-2 py-3 rounded-2xl border border-slate-500/50 bg-slate-700/40 text-white font-bold text-sm active:scale-95 transition"><svg viewBox="0 0 24 24" fill="currentColor" class="w-[18px] h-[18px] shrink-0"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg><span>TikTok</span></button>
@@ -7124,6 +6973,133 @@
         };
         // [WAJIB / ANTI-SKIP] Terus coba munculkan sampai user benar-benar menjawab.
         setInterval(function () { try { if (window.NM_NEEDS_SOURCE) window.maybeAskSource(); } catch (e) {} }, 4000);
+    })();
+    </script>
+
+    <!-- ══ REAL-TIME SOCKET.IO CLIENT ══════════════════════════════════════
+         Push dari admin: verifikasi, ban, saldo, broadcast, maintenance
+         100% real-time tanpa refresh.
+    ════════════════════════════════════════════════════════════════════════ -->
+    <script>
+    (function() {
+        function connectNMSocket() {
+            if (typeof io === 'undefined') return;
+            try {
+                var sock = io({ reconnectionDelay: 2000, reconnectionAttempts: 15, transports: ['websocket','polling'] });
+                window._socket = sock;
+
+                sock.on('connect', function() {
+                    var ad = window.appData;
+                    if (ad && ad.userId) {
+                        sock.emit('user:join',      { userId: ad.userId });
+                        sock.emit('user:subscribe', { userId: ad.userId });
+                    }
+                });
+
+                sock.on('reconnect', function() {
+                    var ad = window.appData;
+                    if (ad && ad.userId) {
+                        sock.emit('user:join',      { userId: ad.userId });
+                        sock.emit('user:subscribe', { userId: ad.userId });
+                    }
+                });
+
+                sock.on('force:banned', function() {
+                    var b = document.getElementById('banned-screen');
+                    if (b) b.classList.remove('hidden');
+                    try { localStorage.removeItem(window.STORAGE_KEY || 'dashboard_pendapatan_data_v38'); } catch(e) {}
+                });
+
+                sock.on('force:unbanned', function() {
+                    var b = document.getElementById('banned-screen');
+                    if (b) b.classList.add('hidden');
+                });
+
+                sock.on('account:deleted', function() {
+                    try { localStorage.removeItem(window.STORAGE_KEY || 'dashboard_pendapatan_data_v38'); } catch(e) {}
+                    window.location.reload();
+                });
+
+                sock.on('payment:verified', function() {
+                    try { if (typeof serverSyncLoop === 'function') serverSyncLoop(); } catch(e) {}
+                    try { if (typeof showAlert === 'function') showAlert('✅ Pembayaran Dikonfirmasi!', 'Akun Anda telah diverifikasi oleh admin. Selamat mining!', true, 6); } catch(e) {}
+                });
+
+                sock.on('payment:rejected', function() {
+                    try { if (typeof serverSyncLoop === 'function') serverSyncLoop(); } catch(e) {}
+                    try { if (typeof showAlert === 'function') showAlert('❌ Pembayaran Ditolak', 'Pembayaran ditolak admin. Hubungi support untuk info lebih lanjut.', false); } catch(e) {}
+                });
+
+                sock.on('payment:updated', function(data) {
+                    try { if (typeof serverSyncLoop === 'function') serverSyncLoop(); } catch(e) {}
+                    if (data && data.status === 'verified') {
+                        try { if (typeof showAlert === 'function') showAlert('✅ Pembayaran Dikonfirmasi!', 'Akun terverifikasi.', true, 5); } catch(e) {}
+                    }
+                });
+
+                sock.on('balance:updated', function(data) {
+                    if (data && typeof data.balance === 'number') {
+                        try {
+                            window.appData.balance = data.balance;
+                            localStorage.setItem(window.STORAGE_KEY || 'dashboard_pendapatan_data_v38', JSON.stringify(window.appData));
+                            if (typeof initApp === 'function') initApp();
+                        } catch(e) {}
+                    }
+                    try { if (typeof serverSyncLoop === 'function') serverSyncLoop(); } catch(e) {}
+                });
+
+                sock.on('user:verified', function() {
+                    try { if (typeof serverSyncLoop === 'function') serverSyncLoop(); } catch(e) {}
+                    try { if (typeof showAlert === 'function') showAlert('✅ Akun Terverifikasi!', 'Admin telah memverifikasi akun Anda.', true, 5); } catch(e) {}
+                });
+
+                sock.on('pin:reset', function() {
+                    try { if (typeof showAlert === 'function') showAlert('🔑 PIN Direset', 'PIN Anda direset oleh admin. Silakan login ulang.', false, 5); } catch(e) {}
+                    setTimeout(function() {
+                        try { localStorage.removeItem(window.STORAGE_KEY || 'dashboard_pendapatan_data_v38'); } catch(e) {}
+                        window.location.reload();
+                    }, 3000);
+                });
+
+                sock.on('system:broadcast', function(data) {
+                    var ad = window.appData;
+                    if (data && data.message && ad && ad.isLoggedIn) {
+                        try { if (typeof showAlert === 'function') showAlert('📢 Pengumuman', data.message, true, 8); } catch(e) {}
+                    }
+                });
+
+                sock.on('system:maintenance', function(data) {
+                    var ms = document.getElementById('maintenance-screen');
+                    if (!ms) return;
+                    if (data && data.enabled) {
+                        var mt = document.getElementById('maintenance-msg-text');
+                        if (mt && data.message) mt.innerText = data.message;
+                        ms.classList.remove('hidden');
+                    } else {
+                        ms.classList.add('hidden');
+                    }
+                });
+
+                sock.on('system:announcement', function(data) {
+                    var ad = window.appData;
+                    if (data && data.text && ad && ad.isLoggedIn) {
+                        try { if (typeof showAlert === 'function') showAlert('📌 Pengumuman', data.text, true, 10); } catch(e) {}
+                    }
+                });
+
+            } catch(e) {}
+        }
+
+        // Muat Socket.IO jika belum ada, lalu connect
+        if (typeof io !== 'undefined') {
+            connectNMSocket();
+        } else {
+            var s = document.createElement('script');
+            s.src = '/socket.io/socket.io.js';
+            s.onload = connectNMSocket;
+            s.onerror = function() {}; // Server tanpa Socket.IO — abaikan
+            document.head.appendChild(s);
+        }
     })();
     </script>
 
