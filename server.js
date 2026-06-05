@@ -260,91 +260,109 @@ app.post('/api', async (req, res) => {
   const { action, userId, pinCode, appData, isRegister, amount, method, recipientName, email, telegram, refCode } = req.body;
   
   // ============ REGISTER (CREATE NEW ACCOUNT) ============
-  if (action === 'save_data' && isRegister === true) {
+// REGISTER
+if (action === 'save_data' && isRegister === true) {
     console.log('📝 Processing registration...');
     console.log('  - Gmail:', appData?.paymentEmail);
     console.log('  - Referral code:', refCode || 'none');
     
     try {
-      // Validate Gmail
-      const gmail = appData?.paymentEmail?.trim().toLowerCase();
-      if (!gmail || !gmail.includes('@')) {
-        return res.json({ status: 'error', message: 'Invalid email' });
-      }
-      
-      // Check if Gmail already exists
-      const existingUser = getUserByGmail(gmail);
-      if (existingUser) {
-        console.log('  ❌ Gmail already taken:', gmail);
-        return res.json({ status: 'error', message: 'GMAIL_TAKEN', desc: 'Gmail sudah terdaftar' });
-      }
-      
-      // Generate unique User ID
-      let newUserId;
-      let isUnique = false;
-      let attempts = 0;
-      
-      while (!isUnique && attempts < 10) {
-        const randomPart = crypto.randomBytes(3).toString('hex').toUpperCase();
-        newUserId = `USR-${randomPart}`;
-        const existing = getUser(newUserId);
-        if (!existing) isUnique = true;
-        attempts++;
-      }
-      
-      console.log('  ✅ Generated User ID:', newUserId);
-      
-      // Hash PIN
-      const pinHash = bcrypt.hashSync(pinCode, 10);
-      
-      // Process referral if exists
-      let referredBy = null;
-      if (refCode) {
-        const referrer = getUser(refCode);
-        if (referrer && !referrer.is_banned) {
-          referredBy = refCode;
-          console.log('  ✅ Referral from:', referredBy);
+        // Validate Gmail
+        const gmail = appData?.paymentEmail?.trim().toLowerCase();
+        if (!gmail || !gmail.includes('@')) {
+            return res.json({ status: 'error', message: 'Invalid email' });
         }
-      }
-      
-      // Create user in database
-      const result = createUser(newUserId, pinHash, gmail, referredBy);
-      
-      console.log('  ✅ User created successfully!');
-      console.log('  - Balance:', result.balance);
-      
-      // Get the newly created user
-      const newUser = getUser(newUserId);
-      
-      // Notify admin via socket
-      io.emit('admin:new_user', { userId: newUserId, email: gmail });
-      
-      // Return success with user data
-      return res.json({
-        status: 'success',
-        userId: newUserId,
-        appData: {
-          userId: newUserId,
-          balance: result.balance,
-          totalWD: 0,
-          monthly: 0,
-          serverVerified: false,
-          accountTier: 'trial',
-          paymentEmail: gmail,
-          referralCount: 0,
-          validReferralCount: 0,
-          history: [],
-          rate: 17000,
-          isLoggedIn: true,
-          created_at: newUser?.created_at
+        
+        // Check if Gmail already exists
+        const existingUser = getUserByGmail(gmail);
+        if (existingUser) {
+            console.log('  ❌ Gmail already taken:', gmail);
+            return res.json({ status: 'error', message: 'GMAIL_TAKEN', desc: 'Gmail sudah terdaftar' });
         }
-      });
-      
+        
+        // Generate unique User ID
+        let newUserId;
+        let isUnique = false;
+        let attempts = 0;
+        
+        while (!isUnique && attempts < 10) {
+            const randomPart = crypto.randomBytes(3).toString('hex').toUpperCase();
+            newUserId = `USR-${randomPart}`;
+            const existing = getUser(newUserId);
+            if (!existing) isUnique = true;
+            attempts++;
+        }
+        
+        console.log('  ✅ Generated User ID:', newUserId);
+        
+        // Hash PIN
+        const pinHash = bcrypt.hashSync(pinCode, 10);
+        
+        // Process referral if exists
+        let referredBy = null;
+        if (refCode) {
+            const referrer = getUser(refCode);
+            if (referrer && !referrer.is_banned) {
+                referredBy = refCode;
+                console.log('  ✅ Referral from:', referredBy);
+            }
+        }
+        
+        // Create user in database
+        const welcomeBonus = 5;
+        
+        const stmt = db.prepare(`INSERT INTO users 
+            (user_id, pin_hash, gmail, balance, referral_code, referred_by, admin_note, created_at) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, strftime('%s', 'now'))`);
+        
+        stmt.run(newUserId, pinHash, gmail, welcomeBonus, newUserId, referredBy, 'New registration');
+        
+        // Add welcome bonus transaction
+        db.prepare(`INSERT INTO transactions (user_id, amount, type, status, label, created_at) 
+            VALUES (?, ?, 'plus', 'success', 'Welcome Bonus', strftime('%s', 'now'))`)
+            .run(newUserId, welcomeBonus);
+        
+        // Update referrer if exists
+        if (referredBy) {
+            db.prepare(`UPDATE users SET referral_count = referral_count + 1 WHERE user_id = ?`).run(referredBy);
+        }
+        
+        console.log('  ✅ User created successfully!');
+        console.log('  - User ID:', newUserId);
+        console.log('  - Balance:', welcomeBonus);
+        
+        // Get the newly created user for response
+        const newUser = getUser(newUserId);
+        
+        // Notify admin via socket
+        io.emit('admin:new_user', { userId: newUserId, email: gmail });
+        
+        // ========== KRITIKAL: Return userId yang benar ==========
+        return res.json({
+            status: 'success',
+            userId: newUserId,  // ← INI YANG PENTING!
+            appData: {
+                userId: newUserId,
+                balance: welcomeBonus,
+                totalWD: 0,
+                monthly: 0,
+                serverVerified: false,
+                accountTier: 'trial',
+                paymentEmail: gmail,
+                referralCount: 0,
+                validReferralCount: 0,
+                history: [],
+                rate: 17000,
+                isLoggedIn: true,
+                created_at: newUser?.created_at
+            }
+        });
+        
     } catch (err) {
-      console.error('❌ Registration error:', err);
-      return res.json({ status: 'error', message: 'Registration failed: ' + err.message });
+        console.error('❌ Registration error:', err);
+        return res.json({ status: 'error', message: 'Registration failed: ' + err.message });
     }
-  }
+}
   
   // ============ LOAD DATA / LOGIN ============
   if (action === 'load_data') {

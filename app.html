@@ -6538,116 +6538,139 @@ async function loadDataFromServer(userId, pin = "") {
             }, 300);
         }
 
-        async function executeRegistration() {
-            const level = selectedRegistrationLevel;
-            const pin = getPinValue('reg-pin');
-            const regGmailInput = document.getElementById('reg-gmail');
-            const regGmailVal = regGmailInput ? regGmailInput.value.trim().toLowerCase() : '';
+async function executeRegistration() {
+    const level = selectedRegistrationLevel;
+    const pin = getPinValue('reg-pin');
+    const regGmailInput = document.getElementById('reg-gmail');
+    const regGmailVal = regGmailInput ? regGmailInput.value.trim().toLowerCase() : '';
+    
+    if (!regGmailVal || !regGmailVal.includes('@') || !regGmailVal.includes('.')) {
+        showAlert("Gmail Wajib Diisi ✉️", "Masukkan Gmail yang valid untuk keperluan upgrade akun.");
+        if (regGmailInput) regGmailInput.focus();
+        return;
+    }
+    
+    if (pin.length < 6) {
+        showAlert("PIN Tidak Valid", "Silakan lengkapi 6 digit PIN terlebih dahulu!");
+        return;
+    }
+
+    const btnReg = document.getElementById('btn-execute-reg');
+    const originalBtnText = btnReg ? btnReg.innerText : '';
+    if (btnReg) { 
+        btnReg.innerText = "Memproses..."; 
+        btnReg.classList.add('opacity-50','pointer-events-none'); 
+    }
+
+    const refCode = document.getElementById('input-ref-code') ? document.getElementById('input-ref-code').value.trim().toUpperCase() : '';
+    const regGmail = regGmailVal;
+
+    // Siapkan data untuk dikirim ke server
+    const registerData = {
+        action: 'save_data',
+        isRegister: true,
+        appData: { 
+            paymentEmail: regGmail 
+        },
+        pinCode: pin,
+        refCode: refCode
+    };
+
+    console.log('📝 Sending registration request:', registerData);
+
+    try {
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(registerData)
+        });
+        
+        const result = await response.json();
+        console.log('📥 Registration response:', result);
+        
+        if (result.status === 'error') {
+            if (result.message === 'GMAIL_TAKEN') {
+                showAlert('Gmail Sudah Terdaftar ⚠️', result.desc || 'Gmail ini sudah digunakan akun lain. Gunakan Gmail berbeda.');
+            } else {
+                showAlert('Registrasi Gagal', result.message || 'Terjadi kesalahan. Coba lagi.');
+            }
+            if (btnReg) { 
+                btnReg.innerText = originalBtnText; 
+                btnReg.classList.remove('opacity-50','pointer-events-none'); 
+            }
+            return;
+        }
+        
+        if (result.status === 'success') {
+            // ========== KRITIKAL: Pastikan ID dari server yang dipakai ==========
+            const newUserId = result.userId;
+            console.log('✅ Registration SUCCESS! User ID dari SERVER:', newUserId);
             
-            if (!regGmailVal || !regGmailVal.includes('@') || !regGmailVal.includes('.')) {
-                showAlert("Gmail Wajib Diisi ✉️", "Masukkan Gmail yang valid untuk keperluan upgrade akun.");
-                if (regGmailInput) regGmailInput.focus();
-                return;
-            }
-            
-            if (pin.length < 6) {
-                showAlert("PIN Tidak Valid", "Silakan lengkapi 6 digit PIN terlebih dahulu!");
-                return;
-            }
-
-            const btnReg = document.getElementById('btn-execute-reg');
-            const originalBtnText = btnReg ? btnReg.innerText : '';
-            if (btnReg) { btnReg.innerText = "Memproses..."; btnReg.classList.add('opacity-50','pointer-events-none'); }
-
-            const refCode = document.getElementById('input-ref-code') ? document.getElementById('input-ref-code').value.trim().toUpperCase() : '';
-            const regGmail = regGmailVal;
-
-            // Validasi kode referral ke server (opsional — kalau gagal lanjutkan saja)
-            if (refCode && API_URL) {
-                try {
-                    const refCheck = await fetch(`${API_URL}?action=check_ref&ref=${refCode}`);
-                    const refData = await refCheck.json();
-                    if (refData.status === 'error' && refData.message && !refData.message.includes('tidak valid')) {
-                        showAlert("Kode Salah ⚠️", refData.message || "Kode undangan tidak terdaftar.");
-                        if (btnReg) { btnReg.innerText = originalBtnText; btnReg.classList.remove('opacity-50','pointer-events-none'); }
-                        closePinCreationModal();
-                        return;
-                    }
-                } catch(e) { /* Abaikan jika jaringan gagal */ }
-            }
-
-            // Siapkan data akun baru
-            const newUserId = 'USR-' + Math.random().toString(36).substr(2, 6).toUpperCase();
+            // Simpan PIN ke variabel global
             userPinCode = pin;
-            try { sessionStorage.setItem("aiCachedPin", pin); localStorage.setItem("aiCachedPin", pin); } catch(e) {}
-
-            appData.userId         = newUserId;
-            appData.paymentEmail   = regGmail;
-            appData.gmailConfirmed = true;
-            appData.isLoggedIn     = true;
-            appData.startDate      = Date.now();
-            appData.accountTier    = 'trial';
+            try { 
+                sessionStorage.setItem("aiCachedPin", pin); 
+                localStorage.setItem("aiCachedPin", pin); 
+            } catch(e) {}
+            
+            // ========== SET appData dengan data dari SERVER ==========
+            appData = result.appData || {};
+            appData.userId = newUserId;  // PASTIKAN ID dari server
+            appData.isLoggedIn = true;
+            appData.paymentEmail = regGmail;
+            appData.balance = result.appData?.balance || 5;
+            appData.accountTier = 'trial';
             appData.serverVerified = false;
+            appData.startDate = Date.now();
+            
+            // Log untuk debugging
+            console.log('💾 Saving appData to localStorage:', {
+                userId: appData.userId,
+                balance: appData.balance,
+                email: appData.paymentEmail
+            });
+            
+            // Simpan ke localStorage
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
             window._justRegisteredAt = Date.now();
-
-            // Simpan lokal DULU agar user tidak kehilangan akun meski internet putus
-            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(appData)); } catch(e) {}
-
-            if (btnReg) btnReg.innerText = "Mendaftarkan Akun...";
-
-            // Coba simpan ke server
-            let saveResult = null;
-            try {
-                saveResult = await saveDataToServer(true);
-            } catch(e) {
-                saveResult = { status: 'network_error', message: 'NETWORK_ERROR' };
-            }
-
-            // Jika server tidak tersedia, tetap lanjutkan (mode offline)
-            // Akun tersimpan lokal, akan sync otomatis saat online
-            if (!saveResult || saveResult.status === 'network_error' || saveResult.message === 'NETWORK_ERROR') {
-                console.warn('Server tidak tersedia saat registrasi. Akun tersimpan lokal.');
-                // Tetap lanjutkan — jangan rollback
-            } else if (saveResult.status === 'error') {
-                if (saveResult.message === 'GMAIL_TAKEN') {
-                    // Rollback hanya jika gmail sudah dipakai
-                    appData.userId = '';
-                    appData.isLoggedIn = false;
-                    appData.paymentEmail = '';
-                    appData.gmailConfirmed = false;
-                    localStorage.removeItem(STORAGE_KEY);
-                    window._justRegisteredAt = 0;
-                    if (btnReg) { btnReg.innerText = originalBtnText; btnReg.classList.remove('opacity-50','pointer-events-none'); }
-                    showAlert('Gmail Sudah Terdaftar ⚠️', saveResult.desc || 'Gmail ini sudah digunakan akun lain. Gunakan Gmail berbeda.');
-                    return;
-                }
-                if (saveResult.message === 'USER_ID_DUPLICATE') {
-                    // Generate ulang ID baru
-                    appData.userId = 'USR-' + Math.random().toString(36).substr(2, 6).toUpperCase();
-                    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(appData)); } catch(e) {}
-                    try { await saveDataToServer(true); } catch(e) {}
-                }
-                // Error lainnya: tetap lanjutkan dengan data lokal
-            }
-
-            // Klaim referral di background
-            if (refCode && API_URL && appData.userId) {
-                fetch(`${API_URL}?action=add&ref=${refCode}&new_user=${appData.userId}`)
-                    .then(r => r.json())
-                    .then(d => {
-                        if (d && d.status !== 'error') setTimeout(() => { serverSyncLoop(); }, 1500);
-                    }).catch(() => {});
-            }
-
-            if (btnReg) { btnReg.innerText = originalBtnText; btnReg.classList.remove('opacity-50','pointer-events-none'); }
+            
+            // Tutup modal
             closePinCreationModal();
             document.getElementById('register-screen').classList.add('hidden');
             
-            document.getElementById('generated-user-id').innerText = appData.userId;
+            // Tampilkan ID GENERATION MODAL dengan ID yang BENAR
+            const userIdDisplay = document.getElementById('generated-user-id');
+            if (userIdDisplay) {
+                userIdDisplay.innerText = newUserId;
+                console.log('📋 Displaying User ID in modal:', newUserId);
+            }
+            
             const genModal = document.getElementById('id-generation-modal');
             genModal.classList.remove('hidden');
-            setTimeout(() => genModal.classList.remove('opacity-0'), 10);
+            setTimeout(() => {
+                genModal.style.opacity = '1';
+            }, 10);
+            
+            if (btnReg) { 
+                btnReg.innerText = originalBtnText; 
+                btnReg.classList.remove('opacity-50','pointer-events-none'); 
+            }
+            
+            // Kirim referral ke server di background
+            if (refCode && API_URL) {
+                fetch(`${API_URL}?action=add&ref=${refCode}&new_user=${newUserId}`)
+                    .catch(err => console.log('Referral add error:', err));
+            }
         }
+    } catch (err) {
+        console.error('❌ Registration error:', err);
+        showAlert('Koneksi Gagal', 'Periksa koneksi internet Anda.');
+        if (btnReg) { 
+            btnReg.innerText = originalBtnText; 
+            btnReg.classList.remove('opacity-50','pointer-events-none'); 
+        }
+    }
+}
 
 
         function copyGeneratedId() {
