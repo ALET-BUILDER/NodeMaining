@@ -1,0 +1,1334 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Admin Panel — NodeMaster</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0B1121; color: #cbd5e1; -webkit-font-smoothing: antialiased; }
+
+        /* ── PIN INPUT ── */
+        .pin-input-container { display: flex; gap: 8px; justify-content: center; }
+        .pin-box {
+            width: 42px; height: 52px; border-radius: 12px;
+            background-color: #0f172a; border: 2px solid #334155;
+            color: white; text-align: center; font-size: 22px; font-weight: 800;
+            caret-color: transparent; transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .pin-box:focus { border-color: #3b82f6; outline: none; box-shadow: 0 0 0 4px rgba(59,130,246,0.2); }
+        .pin-box.filled { background-color: #1e293b; border-color: #3b82f6; }
+
+        /* ── ANIMATIONS ── */
+        @keyframes shake { 0%,100%{transform:translateX(0)} 10%,30%,50%,70%,90%{transform:translateX(-6px)} 20%,40%,60%,80%{transform:translateX(6px)} }
+        .shake-error { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
+
+        @keyframes slide-in { 0%{transform:translateY(-18px) scale(0.96);opacity:0} 100%{transform:translateY(0) scale(1);opacity:1} }
+        @keyframes fade-out { 0%{opacity:1;transform:scale(1)} 100%{opacity:0;transform:scale(0.96)} }
+        .toast-item { animation: slide-in 0.35s cubic-bezier(0.23,1,0.32,1) forwards; }
+        .toast-exit { animation: fade-out 0.3s ease forwards; }
+
+        @keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.85)} }
+        .live-dot { animation: pulse-dot 1.4s ease-in-out infinite; }
+
+        /* ── TABS ── */
+        .tab-btn { transition: all 0.25s cubic-bezier(0.2,0.8,0.2,1); }
+        .tab-active { background-color: rgba(59,130,246,0.15); color: #60a5fa; }
+        .tab-inactive { color: #64748b; }
+        .tab-inactive:hover { color: #94a3b8; background-color: rgba(255,255,255,0.04); }
+
+        /* ── TABLE ── */
+        .data-table th { background: rgba(15,23,42,0.9); position: sticky; top: 0; z-index: 2; }
+        .data-row { transition: background 0.15s; }
+        .data-row:hover { background: rgba(255,255,255,0.03); }
+
+        /* ── STATUS BADGE ── */
+        .badge-pending   { background:rgba(245,158,11,0.15); color:#fbbf24; border:1px solid rgba(245,158,11,0.3); }
+        .badge-verified  { background:rgba(16,185,129,0.15); color:#34d399; border:1px solid rgba(16,185,129,0.3); }
+        .badge-rejected  { background:rgba(239,68,68,0.15);  color:#f87171; border:1px solid rgba(239,68,68,0.3); }
+        .badge-active    { background:rgba(59,130,246,0.15);  color:#60a5fa; border:1px solid rgba(59,130,246,0.3); }
+        .badge-banned    { background:rgba(225,29,72,0.15);   color:#fb7185; border:1px solid rgba(225,29,72,0.3); }
+
+        /* ── CARD ── */
+        .stat-card { background:linear-gradient(135deg,rgba(15,23,42,0.9),rgba(2,6,23,0.9)); border:1px solid rgba(255,255,255,0.06); transition: transform 0.2s, box-shadow 0.2s; }
+        .stat-card:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(0,0,0,0.4); }
+
+        /* ── MODAL ── */
+        .modal-enter { transform: scale(0.92) translateY(16px); opacity: 0; transition: transform 0.3s cubic-bezier(0.23,1,0.32,1), opacity 0.3s ease; }
+        .modal-enter.open { transform: scale(1) translateY(0); opacity: 1; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
+
+        /* ── LOADING SCREEN ── */
+        #loading-screen {
+            position:fixed;inset:0;z-index:9999;background:#0B1121;
+            display:flex;flex-direction:column;align-items:center;justify-content:center;
+            transition:opacity 0.5s ease;
+        }
+        @keyframes spin { to{transform:rotate(360deg)} }
+        .spinner { width:48px;height:48px;border:3px solid #1e293b;border-top-color:#3b82f6;border-radius:50%;animation:spin 1s linear infinite; }
+
+        /* Search highlight */
+        .search-highlight { background: rgba(251,191,36,0.2); border-radius: 2px; }
+
+        /* Action button */
+        .action-btn { transition: all 0.15s ease; }
+        .action-btn:active { transform: scale(0.93); }
+
+        @media (max-width: 768px) {
+            .backdrop-blur-md, .backdrop-blur-sm { backdrop-filter:none!important; -webkit-backdrop-filter:none!important; }
+        }
+    </style>
+</head>
+<body class="w-full max-w-[500px] mx-auto min-h-[100dvh] pb-28 relative overflow-x-hidden bg-[#0B1121] text-slate-300 overscroll-none">
+
+    <!-- BG -->
+    <div class="fixed top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-[#0B1121] to-[#0B1121] -z-20 pointer-events-none"></div>
+    <div class="fixed top-0 left-1/2 -translate-x-1/2 w-80 h-80 bg-red-600/5 rounded-full blur-[80px] -z-10 pointer-events-none"></div>
+
+    <!-- ═══ LOADING SCREEN ═══ -->
+    <div id="loading-screen">
+        <div class="spinner mb-6"></div>
+        <p class="text-slate-400 text-xs font-mono uppercase tracking-widest">Memuat Admin Panel...</p>
+    </div>
+
+    <!-- ═══ PIN LOGIN SCREEN ═══ -->
+    <div id="pin-login-screen" class="fixed inset-0 bg-[#0B1121] z-[9990] hidden flex-col items-center justify-center p-6 overflow-y-auto">
+        <div class="fixed inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_0%,#1e293b,#0B1121_70%)] pointer-events-none -z-10"></div>
+        <div class="w-full max-w-sm mx-auto">
+            <!-- Brand -->
+            <div class="text-center mb-8">
+                <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4 shadow-[0_0_30px_rgba(239,68,68,0.4)]"
+                     style="background:linear-gradient(135deg,rgba(239,68,68,0.25),rgba(220,38,38,0.15));border:1px solid rgba(239,68,68,0.4)">
+                    <svg class="h-8 w-8 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                    </svg>
+                </div>
+                <h1 class="text-3xl font-black text-white tracking-tighter">NODE<span class="text-red-400">ADMIN</span></h1>
+                <p class="text-slate-500 text-xs mt-1 font-mono tracking-wide">Panel Kontrol Administrator</p>
+            </div>
+
+            <!-- PIN Card -->
+            <div class="bg-gradient-to-br from-slate-900 to-[#0f172a] border border-red-500/20 rounded-[2rem] p-6 shadow-[0_15px_40px_rgba(239,68,68,0.1)] relative overflow-hidden">
+                <div class="absolute top-0 left-0 right-0 h-[1px]" style="background:linear-gradient(90deg,transparent,rgba(239,68,68,0.5),transparent)"></div>
+                <div class="absolute -top-12 -right-12 w-28 h-28 bg-red-500/8 rounded-full blur-2xl pointer-events-none"></div>
+
+                <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-5 text-center">Masukkan PIN Admin (6 Digit)</p>
+
+                <div id="admin-pin-container" class="pin-input-container mb-2">
+                    <input type="password" maxlength="1" class="pin-box admin-pin-box" inputmode="numeric" autocomplete="off">
+                    <input type="password" maxlength="1" class="pin-box admin-pin-box" inputmode="numeric" autocomplete="off">
+                    <input type="password" maxlength="1" class="pin-box admin-pin-box" inputmode="numeric" autocomplete="off">
+                    <input type="password" maxlength="1" class="pin-box admin-pin-box" inputmode="numeric" autocomplete="off">
+                    <input type="password" maxlength="1" class="pin-box admin-pin-box" inputmode="numeric" autocomplete="off">
+                    <input type="password" maxlength="1" class="pin-box admin-pin-box" inputmode="numeric" autocomplete="off">
+                </div>
+                <p id="pin-error" class="text-[10px] text-rose-400 font-bold text-center mb-4 hidden">PIN Salah. Coba lagi.</p>
+
+                <button id="btn-login-pin" onclick="submitAdminPin()"
+                    class="w-full text-white font-black py-4 rounded-xl transition-all text-sm active:scale-95 tracking-wide relative overflow-hidden mt-3"
+                    style="background:linear-gradient(135deg,#dc2626,#b91c1c);box-shadow:0 0 25px rgba(239,68,68,0.35),0 4px 15px rgba(0,0,0,0.3);border:1px solid rgba(239,68,68,0.4)">
+                    <span class="relative z-10 flex items-center justify-center gap-2">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/></svg>
+                        Masuk Panel Admin
+                    </span>
+                </button>
+
+                <div id="login-attempts-info" class="mt-3 text-center text-[9px] text-slate-600 font-mono hidden">
+                    ⚠️ Terlalu banyak percobaan. Tunggu <span id="lockout-timer">30</span> detik.
+                </div>
+
+                <p class="text-center text-[9px] text-slate-700 mt-4 font-mono">🔒 Akses terbatas — hanya untuk administrator</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ MAIN ADMIN PANEL ═══ -->
+    <div id="admin-panel" class="hidden">
+
+        <!-- ── TOP HEADER ── -->
+        <div class="sticky top-0 z-50 px-4 pt-4 pb-3 bg-[#0B1121]/95 backdrop-blur-sm border-b border-slate-800/60">
+            <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-xl bg-red-500/20 border border-red-500/40 flex items-center justify-center">
+                        <svg class="h-4 w-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                    </div>
+                    <div>
+                        <h1 class="text-sm font-black text-white tracking-tight">NODE<span class="text-red-400">ADMIN</span></h1>
+                        <p class="text-[9px] text-slate-500 font-mono -mt-0.5">Administrator Panel</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div id="socket-status" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-900 border border-slate-700 text-[9px] font-mono">
+                        <div id="socket-dot" class="w-1.5 h-1.5 rounded-full bg-slate-500 live-dot"></div>
+                        <span id="socket-label" class="text-slate-500">Connecting</span>
+                    </div>
+                    <button onclick="adminLogout()" class="w-8 h-8 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center text-slate-400 hover:text-rose-400 hover:border-rose-500/40 transition-all active:scale-90">
+                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- ── STATS ROW ── -->
+            <div class="grid grid-cols-4 gap-2 mb-3">
+                <div class="stat-card rounded-xl p-2.5 text-center">
+                    <p id="stat-total-users" class="text-base font-black text-white">—</p>
+                    <p class="text-[8px] text-slate-500 font-bold uppercase tracking-wide">Users</p>
+                </div>
+                <div class="stat-card rounded-xl p-2.5 text-center">
+                    <p id="stat-active-today" class="text-base font-black text-blue-400">—</p>
+                    <p class="text-[8px] text-slate-500 font-bold uppercase tracking-wide">Aktif</p>
+                </div>
+                <div class="stat-card rounded-xl p-2.5 text-center">
+                    <p id="stat-pending-payments" class="text-base font-black text-amber-400">—</p>
+                    <p class="text-[8px] text-slate-500 font-bold uppercase tracking-wide">Pending</p>
+                </div>
+                <div class="stat-card rounded-xl p-2.5 text-center">
+                    <p id="stat-banned" class="text-base font-black text-rose-400">—</p>
+                    <p class="text-[8px] text-slate-500 font-bold uppercase tracking-wide">Banned</p>
+                </div>
+            </div>
+
+            <!-- ── TABS ── -->
+            <div class="flex gap-1 bg-slate-900/60 border border-slate-800/60 rounded-xl p-1">
+                <button onclick="switchTab('dashboard')" id="tab-dashboard" class="tab-btn tab-active flex-1 text-[9px] font-black uppercase tracking-wider py-2 rounded-lg">
+                    📊 Dashboard
+                </button>
+                <button onclick="switchTab('users')" id="tab-users" class="tab-btn tab-inactive flex-1 text-[9px] font-black uppercase tracking-wider py-2 rounded-lg">
+                    👥 Users
+                </button>
+                <button onclick="switchTab('payments')" id="tab-payments" class="tab-btn tab-inactive flex-1 text-[9px] font-black uppercase tracking-wider py-2 rounded-lg">
+                    💳 Bayar
+                </button>
+                <button onclick="switchTab('system')" id="tab-system" class="tab-btn tab-inactive flex-1 text-[9px] font-black uppercase tracking-wider py-2 rounded-lg">
+                    ⚙️ Sistem
+                </button>
+            </div>
+        </div>
+
+        <!-- ════ TAB: DASHBOARD ════ -->
+        <div id="panel-dashboard" class="px-4 pt-4 space-y-3">
+
+            <!-- Live Activity Feed -->
+            <div class="bg-slate-900/60 border border-slate-700/50 rounded-2xl overflow-hidden">
+                <div class="flex items-center justify-between px-4 py-3 border-b border-slate-800/60">
+                    <div class="flex items-center gap-2">
+                        <div class="w-1.5 h-1.5 rounded-full bg-green-500 live-dot"></div>
+                        <p class="text-[10px] font-black text-white uppercase tracking-widest">Live Activity</p>
+                    </div>
+                    <button onclick="clearActivityFeed()" class="text-[9px] text-slate-600 hover:text-slate-400 font-mono transition-colors">Clear</button>
+                </div>
+                <div id="activity-feed" class="h-52 overflow-y-auto p-3 space-y-1.5 font-mono text-[10px]">
+                    <p class="text-slate-600 text-center pt-10">Menunggu aktivitas real-time...</p>
+                </div>
+            </div>
+
+            <!-- Quick Stats Grid -->
+            <div class="grid grid-cols-2 gap-3">
+                <div class="stat-card rounded-2xl p-4">
+                    <p class="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">Total Saldo (Platform)</p>
+                    <p id="stat-total-balance" class="text-xl font-black text-emerald-400">$0.00</p>
+                    <p class="text-[8px] text-slate-600 mt-1">Saldo aktif seluruh user</p>
+                </div>
+                <div class="stat-card rounded-2xl p-4">
+                    <p class="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">Penarikan Hari Ini</p>
+                    <p id="stat-total-wd" class="text-xl font-black text-blue-400">$0.00</p>
+                    <p class="text-[8px] text-slate-600 mt-1">Total WD disetujui</p>
+                </div>
+                <div class="stat-card rounded-2xl p-4">
+                    <p class="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">Upgrade (Revenue)</p>
+                    <p id="stat-revenue" class="text-xl font-black text-amber-400">Rp 0</p>
+                    <p class="text-[8px] text-slate-600 mt-1">Total pembayaran verified</p>
+                </div>
+                <div class="stat-card rounded-2xl p-4">
+                    <p class="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">Referral Aktif</p>
+                    <p id="stat-referrals" class="text-xl font-black text-purple-400">0</p>
+                    <p class="text-[8px] text-slate-600 mt-1">Jaringan referral</p>
+                </div>
+            </div>
+
+            <!-- Online Users (Real-time) -->
+            <div class="bg-slate-900/60 border border-slate-700/50 rounded-2xl overflow-hidden">
+                <div class="flex items-center justify-between px-4 py-3 border-b border-slate-800/60">
+                    <div class="flex items-center gap-2">
+                        <div class="w-1.5 h-1.5 rounded-full bg-blue-500 live-dot"></div>
+                        <p class="text-[10px] font-black text-white uppercase tracking-widest">User Online Sekarang</p>
+                    </div>
+                    <span id="online-count" class="text-[10px] font-black text-blue-400 bg-blue-500/15 border border-blue-500/30 px-2 py-0.5 rounded-full">0</span>
+                </div>
+                <div id="online-users-list" class="p-3 space-y-1.5 max-h-40 overflow-y-auto">
+                    <p class="text-[10px] text-slate-600 text-center py-4 font-mono">Tidak ada user online</p>
+                </div>
+            </div>
+
+            <!-- Broadcast Message -->
+            <div class="bg-slate-900/60 border border-amber-500/20 rounded-2xl overflow-hidden">
+                <div class="px-4 py-3 border-b border-slate-800/60">
+                    <p class="text-[10px] font-black text-amber-400 uppercase tracking-widest">📢 Broadcast ke Semua User</p>
+                </div>
+                <div class="p-3 space-y-2">
+                    <textarea id="broadcast-msg" rows="2" placeholder="Tulis pesan broadcast..."
+                        class="w-full bg-slate-950/80 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white placeholder-slate-600 outline-none focus:border-amber-500 resize-none"></textarea>
+                    <div class="flex gap-2">
+                        <select id="broadcast-type" class="flex-1 bg-slate-950/80 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-amber-500">
+                            <option value="info">ℹ️ Info</option>
+                            <option value="warning">⚠️ Peringatan</option>
+                            <option value="success">✅ Sukses</option>
+                            <option value="maintenance">🔧 Maintenance</option>
+                        </select>
+                        <button onclick="sendBroadcast()" class="action-btn px-4 py-2 bg-amber-500/20 border border-amber-500/40 text-amber-400 font-black text-xs rounded-xl hover:bg-amber-500/30 transition-all">
+                            Kirim
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ════ TAB: USERS ════ -->
+        <div id="panel-users" class="hidden px-4 pt-4 space-y-3">
+
+            <!-- Search -->
+            <div class="relative">
+                <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35"/></svg>
+                <input type="text" id="user-search" placeholder="Cari ID / Gmail / Username..."
+                    oninput="searchUsers(this.value)"
+                    class="w-full bg-slate-900/80 border border-slate-700/60 rounded-xl pl-9 pr-4 py-3 text-xs text-white placeholder-slate-600 outline-none focus:border-blue-500 transition-colors">
+            </div>
+
+            <!-- Filter -->
+            <div class="flex gap-2 overflow-x-auto pb-1">
+                <button onclick="filterUsers('all')" id="filter-all" class="filter-btn shrink-0 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all bg-blue-500/20 border border-blue-500/40 text-blue-400">Semua</button>
+                <button onclick="filterUsers('active')" id="filter-active" class="filter-btn shrink-0 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all bg-slate-900/60 border border-slate-700/40 text-slate-400">Aktif</button>
+                <button onclick="filterUsers('banned')" id="filter-banned" class="filter-btn shrink-0 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all bg-slate-900/60 border border-slate-700/40 text-slate-400">Banned</button>
+                <button onclick="filterUsers('verified')" id="filter-verified" class="filter-btn shrink-0 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all bg-slate-900/60 border border-slate-700/40 text-slate-400">Verified</button>
+                <button onclick="loadUsers()" class="filter-btn shrink-0 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all bg-slate-900/60 border border-slate-700/40 text-slate-400">🔄 Refresh</button>
+            </div>
+
+            <!-- User Count -->
+            <div class="flex items-center justify-between">
+                <p class="text-[10px] text-slate-500 font-mono"><span id="users-shown">0</span> user ditampilkan</p>
+                <div id="users-loading" class="hidden">
+                    <div class="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full" style="animation:spin 0.8s linear infinite"></div>
+                </div>
+            </div>
+
+            <!-- User List -->
+            <div id="user-list" class="space-y-2">
+                <p class="text-[11px] text-slate-600 text-center py-8 font-mono">Memuat data user...</p>
+            </div>
+        </div>
+
+        <!-- ════ TAB: PAYMENTS ════ -->
+        <div id="panel-payments" class="hidden px-4 pt-4 space-y-3">
+
+            <!-- Payment Filter -->
+            <div class="flex gap-2 overflow-x-auto pb-1">
+                <button onclick="filterPayments('pending')" id="pay-filter-pending" class="pay-filter-btn shrink-0 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all bg-amber-500/20 border border-amber-500/40 text-amber-400">⏳ Pending</button>
+                <button onclick="filterPayments('verified')" id="pay-filter-verified" class="pay-filter-btn shrink-0 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all bg-slate-900/60 border border-slate-700/40 text-slate-400">✅ Verified</button>
+                <button onclick="filterPayments('rejected')" id="pay-filter-rejected" class="pay-filter-btn shrink-0 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all bg-slate-900/60 border border-slate-700/40 text-slate-400">❌ Rejected</button>
+                <button onclick="filterPayments('all')" id="pay-filter-all" class="pay-filter-btn shrink-0 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all bg-slate-900/60 border border-slate-700/40 text-slate-400">📋 Semua</button>
+            </div>
+
+            <div class="flex items-center justify-between">
+                <p class="text-[10px] text-slate-500 font-mono"><span id="payments-shown">0</span> transaksi</p>
+                <button onclick="loadPayments(currentPaymentFilter)" class="text-[9px] text-blue-400 font-bold hover:text-blue-300 transition-colors">🔄 Refresh</button>
+            </div>
+
+            <!-- Payment List -->
+            <div id="payment-list" class="space-y-2">
+                <p class="text-[11px] text-slate-600 text-center py-8 font-mono">Memuat data pembayaran...</p>
+            </div>
+        </div>
+
+        <!-- ════ TAB: SYSTEM ════ -->
+        <div id="panel-system" class="hidden px-4 pt-4 space-y-3">
+
+            <!-- Maintenance Mode -->
+            <div class="bg-slate-900/60 border border-slate-700/50 rounded-2xl p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <p class="text-[10px] font-black text-white uppercase tracking-widest">Mode Maintenance</p>
+                        <p class="text-[9px] text-slate-500 mt-0.5">Kunci semua akses user ke platform</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="toggle-maintenance" onchange="toggleMaintenance(this.checked)" class="sr-only peer">
+                        <div class="w-11 h-6 bg-slate-700 peer-focus:ring-2 peer-focus:ring-amber-500/30 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                    </label>
+                </div>
+                <textarea id="maintenance-msg" rows="2" placeholder="Pesan maintenance (opsional)..."
+                    class="w-full bg-slate-950/80 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white placeholder-slate-600 outline-none focus:border-amber-500 resize-none"></textarea>
+            </div>
+
+            <!-- Announcement Banner -->
+            <div class="bg-slate-900/60 border border-blue-500/20 rounded-2xl p-4">
+                <p class="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-3">📌 Pengumuman Global</p>
+                <textarea id="announcement-text" rows="3" placeholder="Tulis pengumuman yang akan muncul di semua akun user..."
+                    class="w-full bg-slate-950/80 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white placeholder-slate-600 outline-none focus:border-blue-500 resize-none mb-2"></textarea>
+                <div class="flex gap-2">
+                    <button onclick="saveAnnouncement()" class="action-btn flex-1 py-2.5 bg-blue-500/20 border border-blue-500/40 text-blue-400 font-black text-xs rounded-xl hover:bg-blue-500/30 transition-all">Simpan & Aktifkan</button>
+                    <button onclick="clearAnnouncement()" class="action-btn px-4 py-2.5 bg-slate-800 border border-slate-700 text-slate-400 font-black text-xs rounded-xl hover:bg-slate-700 transition-all">Hapus</button>
+                </div>
+            </div>
+
+            <!-- Edit Reward Config -->
+            <div class="bg-slate-900/60 border border-emerald-500/20 rounded-2xl p-4">
+                <p class="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-3">💰 Konfigurasi Reward</p>
+                <div class="space-y-2.5">
+                    <div>
+                        <label class="text-[9px] text-slate-500 font-bold uppercase tracking-widest block mb-1">Mining Rate ($/jam)</label>
+                        <input type="number" id="cfg-mining-rate" step="0.001" placeholder="0.005"
+                            class="w-full bg-slate-950/80 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-emerald-500">
+                    </div>
+                    <div>
+                        <label class="text-[9px] text-slate-500 font-bold uppercase tracking-widest block mb-1">Welcome Bonus ($)</label>
+                        <input type="number" id="cfg-welcome-bonus" step="0.01" placeholder="5.00"
+                            class="w-full bg-slate-950/80 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-emerald-500">
+                    </div>
+                    <div>
+                        <label class="text-[9px] text-slate-500 font-bold uppercase tracking-widest block mb-1">Min. Withdraw ($)</label>
+                        <input type="number" id="cfg-min-wd" step="0.01" placeholder="10.00"
+                            class="w-full bg-slate-950/80 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-emerald-500">
+                    </div>
+                    <button onclick="saveConfig()" class="action-btn w-full py-2.5 bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 font-black text-xs rounded-xl hover:bg-emerald-500/30 transition-all">
+                        💾 Simpan Konfigurasi
+                    </button>
+                </div>
+            </div>
+
+            <!-- Danger Zone -->
+            <div class="bg-slate-900/60 border border-rose-500/20 rounded-2xl p-4">
+                <p class="text-[10px] font-black text-rose-400 uppercase tracking-widest mb-3">⚠️ Zona Berbahaya</p>
+                <div class="space-y-2">
+                    <button onclick="confirmDangerAction('reset_pending_payments', 'Reset semua pembayaran pending?')"
+                        class="action-btn w-full py-2.5 bg-rose-500/10 border border-rose-500/30 text-rose-400 font-black text-xs rounded-xl hover:bg-rose-500/20 transition-all">
+                        🗑️ Reset Semua Pembayaran Pending
+                    </button>
+                    <button onclick="confirmDangerAction('clear_banned_users', 'Hapus semua user yang dibanned?')"
+                        class="action-btn w-full py-2.5 bg-rose-500/10 border border-rose-500/30 text-rose-400 font-black text-xs rounded-xl hover:bg-rose-500/20 transition-all">
+                        🚫 Hapus Semua User Banned
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- /#admin-panel -->
+
+    <!-- ════ BOTTOM NAV ════ -->
+    <div id="bottom-nav" class="hidden fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[500px] z-50 px-4 pb-4 bg-gradient-to-t from-[#0B1121] via-[#0B1121]/90 to-transparent pt-4">
+        <div class="bg-slate-900/90 border border-slate-700/60 rounded-2xl p-1.5 flex items-center gap-1 shadow-[0_-8px_30px_rgba(0,0,0,0.5)] backdrop-blur-md">
+            <button onclick="switchTab('dashboard')" id="nav-dashboard" class="flex-1 flex flex-col items-center gap-1 py-2 rounded-xl transition-all nav-active">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                <span class="text-[8px] font-black uppercase tracking-wide">Dashboard</span>
+            </button>
+            <button onclick="switchTab('users')" id="nav-users" class="flex-1 flex flex-col items-center gap-1 py-2 rounded-xl transition-all text-slate-500">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                <span class="text-[8px] font-black uppercase tracking-wide">Users</span>
+            </button>
+            <button onclick="switchTab('payments')" id="nav-payments" class="flex-1 flex flex-col items-center gap-1 py-2 rounded-xl transition-all text-slate-500 relative">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+                <span class="text-[8px] font-black uppercase tracking-wide">Pembayaran</span>
+                <span id="pending-badge" class="hidden absolute top-1.5 right-3 w-4 h-4 bg-amber-500 text-black font-black text-[7px] rounded-full flex items-center justify-center">0</span>
+            </button>
+            <button onclick="switchTab('system')" id="nav-system" class="flex-1 flex flex-col items-center gap-1 py-2 rounded-xl transition-all text-slate-500">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>
+                <span class="text-[8px] font-black uppercase tracking-wide">Sistem</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- ════ USER DETAIL MODAL ════ -->
+    <div id="user-detail-modal" class="fixed inset-0 bg-slate-950/90 hidden z-[200] flex items-end justify-center p-4 backdrop-blur-md">
+        <div id="user-detail-card" class="modal-enter bg-gradient-to-b from-slate-900 to-[#0f172a] border border-slate-700/80 w-full max-w-sm rounded-[2rem] p-5 shadow-[0_-15px_40px_rgba(0,0,0,0.6)] relative overflow-hidden max-h-[85dvh] overflow-y-auto">
+            <div class="absolute top-0 left-0 right-0 h-[1px]" style="background:linear-gradient(90deg,transparent,rgba(59,130,246,0.4),transparent)"></div>
+
+            <!-- Header -->
+            <div class="flex items-start justify-between mb-4">
+                <div>
+                    <h3 id="modal-user-id" class="text-sm font-black text-white font-mono">—</h3>
+                    <p id="modal-user-email" class="text-[10px] text-slate-400 mt-0.5">—</p>
+                </div>
+                <button onclick="closeUserModal()" class="w-7 h-7 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400 hover:text-white active:scale-90 transition-all">
+                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <!-- User Info Grid -->
+            <div id="modal-user-info" class="grid grid-cols-2 gap-2 mb-4 text-[10px]"><!-- filled by JS --></div>
+
+            <!-- Balance Edit -->
+            <div class="bg-slate-950/60 border border-emerald-500/20 rounded-xl p-3 mb-3">
+                <p class="text-[9px] font-black text-emerald-400 uppercase tracking-widest mb-2">Edit Saldo</p>
+                <div class="flex gap-2">
+                    <input type="number" id="modal-balance-input" step="0.01" placeholder="Nominal baru..."
+                        class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-emerald-500">
+                    <button onclick="updateUserBalance()" class="action-btn px-4 py-2 bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 font-black text-xs rounded-xl hover:bg-emerald-500/30">Set</button>
+                </div>
+            </div>
+
+            <!-- Note/Reason -->
+            <div class="bg-slate-950/60 border border-slate-700/40 rounded-xl p-3 mb-3">
+                <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Catatan Admin</p>
+                <textarea id="modal-admin-note" rows="2" placeholder="Catatan opsional untuk aksi ini..."
+                    class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500 resize-none"></textarea>
+            </div>
+
+            <!-- Actions -->
+            <div class="grid grid-cols-2 gap-2 mb-2">
+                <button id="modal-ban-btn" onclick="toggleBanUser()" class="action-btn py-3 bg-rose-500/15 border border-rose-500/30 text-rose-400 font-black text-xs rounded-xl hover:bg-rose-500/25 transition-all">🚫 Ban User</button>
+                <button onclick="verifyUserManual()" class="action-btn py-3 bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-black text-xs rounded-xl hover:bg-emerald-500/25 transition-all">✅ Verif. Manual</button>
+                <button onclick="resetUserPin()" class="action-btn py-3 bg-amber-500/15 border border-amber-500/30 text-amber-400 font-black text-xs rounded-xl hover:bg-amber-500/25 transition-all">🔑 Reset PIN</button>
+                <button onclick="deleteUser()" class="action-btn py-3 bg-slate-800 border border-slate-700 text-slate-300 font-black text-xs rounded-xl hover:bg-slate-700 transition-all">🗑️ Hapus Akun</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ════ PAYMENT DETAIL MODAL ════ -->
+    <div id="payment-detail-modal" class="fixed inset-0 bg-slate-950/90 hidden z-[200] flex items-end justify-center p-4 backdrop-blur-md">
+        <div id="payment-detail-card" class="modal-enter bg-gradient-to-b from-slate-900 to-[#0f172a] border border-slate-700/80 w-full max-w-sm rounded-[2rem] p-5 shadow-[0_-15px_40px_rgba(0,0,0,0.6)] relative overflow-hidden">
+            <div class="absolute top-0 left-0 right-0 h-[1px]" style="background:linear-gradient(90deg,transparent,rgba(245,158,11,0.4),transparent)"></div>
+
+            <div class="flex items-start justify-between mb-4">
+                <div>
+                    <h3 class="text-sm font-black text-white">Detail Pembayaran</h3>
+                    <p id="pay-modal-id" class="text-[10px] text-slate-400 mt-0.5 font-mono">—</p>
+                </div>
+                <button onclick="closePaymentModal()" class="w-7 h-7 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400 hover:text-white active:scale-90 transition-all">
+                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <div id="pay-modal-info" class="space-y-2 mb-4 text-[11px]"><!-- filled by JS --></div>
+
+            <!-- Payment Proof Image -->
+            <div id="pay-modal-proof" class="mb-4 hidden">
+                <p class="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2">Bukti Transfer</p>
+                <img id="pay-proof-img" src="" alt="Bukti" class="w-full rounded-xl border border-slate-700 object-cover max-h-40">
+            </div>
+
+            <!-- Actions -->
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="verifyPayment('verified')" class="action-btn py-3.5 bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 font-black text-sm rounded-xl hover:bg-emerald-500/30 transition-all">
+                    ✅ Verifikasi
+                </button>
+                <button onclick="verifyPayment('rejected')" class="action-btn py-3.5 bg-rose-500/15 border border-rose-500/30 text-rose-400 font-black text-sm rounded-xl hover:bg-rose-500/25 transition-all">
+                    ❌ Tolak
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ════ DANGER CONFIRM MODAL ════ -->
+    <div id="danger-modal" class="fixed inset-0 bg-slate-950/90 hidden z-[300] flex items-center justify-center p-4 backdrop-blur-md">
+        <div class="bg-gradient-to-b from-slate-900 to-[#0f172a] border border-rose-500/30 w-full max-w-xs rounded-[1.5rem] p-5 shadow-[0_15px_40px_rgba(225,29,72,0.2)] text-center">
+            <div class="w-12 h-12 bg-rose-500/20 border border-rose-500/40 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                <svg class="h-6 w-6 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+            </div>
+            <h3 class="text-sm font-black text-white mb-1">Konfirmasi Aksi</h3>
+            <p id="danger-modal-msg" class="text-[10px] text-slate-400 mb-4">Apakah Anda yakin?</p>
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="closeDangerModal()" class="py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 font-black text-xs hover:bg-slate-700 transition-all">Batal</button>
+                <button onclick="executeDangerAction()" class="py-2.5 rounded-xl bg-rose-600 text-white font-black text-xs hover:bg-rose-500 transition-all shadow-[0_0_15px_rgba(225,29,72,0.4)]">Ya, Lanjutkan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ════ TOAST CONTAINER ════ -->
+    <div id="toast-container" class="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] flex flex-col items-center gap-2 w-full max-w-[360px] px-4 pointer-events-none"></div>
+
+    <!-- ════ SCRIPTS ════ -->
+    <script>
+    'use strict';
+
+    // ── CONFIG ─────────────────────────────────────────────────────────────────
+    const ADMIN_PIN       = '043011';  // PIN di server, ini hanya fallback client-side
+    const SESSION_KEY     = 'axka_admin_session';
+    const SESSION_EXPIRY  = 8 * 60 * 60 * 1000; // 8 jam
+    const MAX_ATTEMPTS    = 5;
+    const LOCKOUT_SECS    = 30;
+
+    // ── STATE ──────────────────────────────────────────────────────────────────
+    let socket              = null;
+    let isAuthenticated     = false;
+    let loginAttempts       = 0;
+    let lockoutUntil        = 0;
+    let currentTab          = 'dashboard';
+    let allUsers            = [];
+    let filteredUsers       = [];
+    let allPayments         = [];
+    let currentUserFilter   = 'all';
+    let currentPaymentFilter= 'pending';
+    let selectedUser        = null;
+    let selectedPayment     = null;
+    let dangerAction        = null;
+    let adminToken          = null;
+
+    // ── INIT ───────────────────────────────────────────────────────────────────
+    window.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => {
+            document.getElementById('loading-screen').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('loading-screen').style.display = 'none';
+                checkSession();
+            }, 500);
+        }, 1200);
+
+        setupPinInputs();
+    });
+
+    function checkSession() {
+        try {
+            const s = JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null');
+            if (s && s.token && Date.now() < s.expiry) {
+                adminToken = s.token;
+                enterAdminPanel();
+                return;
+            }
+        } catch(e) {}
+        showLoginScreen();
+    }
+
+    // ── PIN LOGIN ──────────────────────────────────────────────────────────────
+    function showLoginScreen() {
+        document.getElementById('pin-login-screen').classList.remove('hidden');
+        document.getElementById('pin-login-screen').classList.add('flex');
+    }
+
+    function setupPinInputs() {
+        const boxes = document.querySelectorAll('.admin-pin-box');
+        boxes.forEach((box, i) => {
+            box.addEventListener('input', (e) => {
+                const val = e.target.value.replace(/\D/g, '');
+                e.target.value = val;
+                if (val) {
+                    e.target.classList.add('filled');
+                    if (i < boxes.length - 1) boxes[i + 1].focus();
+                    else submitAdminPin();
+                } else {
+                    e.target.classList.remove('filled');
+                }
+            });
+            box.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace' && !box.value && i > 0) boxes[i - 1].focus();
+            });
+        });
+        setTimeout(() => boxes[0] && boxes[0].focus(), 100);
+    }
+
+    function getPinValue() {
+        return Array.from(document.querySelectorAll('.admin-pin-box')).map(b => b.value).join('');
+    }
+
+    function clearPinInputs() {
+        document.querySelectorAll('.admin-pin-box').forEach(b => {
+            b.value = '';
+            b.classList.remove('filled');
+        });
+        document.querySelector('.admin-pin-box') && document.querySelector('.admin-pin-box').focus();
+    }
+
+    async function submitAdminPin() {
+        if (Date.now() < lockoutUntil) return;
+
+        const pin = getPinValue();
+        if (pin.length < 6) return;
+
+        const btn = document.getElementById('btn-login-pin');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="flex items-center justify-center gap-2"><div class="w-3 h-3 border-2 border-white border-t-transparent rounded-full" style="animation:spin 0.8s linear infinite"></div> Memverifikasi...</span>';
+
+        try {
+            // Verifikasi ke server
+            const res = await fetch('/admin/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pin })
+            });
+            const data = await res.json();
+
+            if (data.status === 'ok' && data.token) {
+                loginAttempts = 0;
+                adminToken = data.token;
+                sessionStorage.setItem(SESSION_KEY, JSON.stringify({
+                    token: data.token,
+                    expiry: Date.now() + SESSION_EXPIRY
+                }));
+                document.getElementById('pin-login-screen').classList.add('hidden');
+                document.getElementById('pin-login-screen').classList.remove('flex');
+                document.getElementById('pin-error').classList.add('hidden');
+                enterAdminPanel();
+            } else {
+                handleWrongPin();
+            }
+        } catch(e) {
+            // Fallback client-side (kalau server tidak bisa dijangkau)
+            if (pin === ADMIN_PIN) {
+                adminToken = 'local_' + Date.now();
+                sessionStorage.setItem(SESSION_KEY, JSON.stringify({
+                    token: adminToken,
+                    expiry: Date.now() + SESSION_EXPIRY
+                }));
+                document.getElementById('pin-login-screen').classList.add('hidden');
+                document.getElementById('pin-login-screen').classList.remove('flex');
+                enterAdminPanel();
+            } else {
+                handleWrongPin();
+            }
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<span class="relative z-10 flex items-center justify-center gap-2"><svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/></svg>Masuk Panel Admin</span>';
+        }
+    }
+
+    function handleWrongPin() {
+        loginAttempts++;
+        clearPinInputs();
+
+        const errEl = document.getElementById('pin-error');
+        errEl.classList.remove('hidden');
+
+        const container = document.getElementById('admin-pin-container');
+        container.classList.add('shake-error');
+        setTimeout(() => container.classList.remove('shake-error'), 600);
+
+        if (loginAttempts >= MAX_ATTEMPTS) {
+            lockoutUntil = Date.now() + LOCKOUT_SECS * 1000;
+            const lockInfo = document.getElementById('login-attempts-info');
+            lockInfo.classList.remove('hidden');
+            errEl.textContent = `Terlalu banyak percobaan. Tunggu ${LOCKOUT_SECS} detik.`;
+            let remaining = LOCKOUT_SECS;
+            const t = setInterval(() => {
+                remaining--;
+                document.getElementById('lockout-timer').textContent = remaining;
+                if (remaining <= 0) {
+                    clearInterval(t);
+                    lockInfo.classList.add('hidden');
+                    errEl.classList.add('hidden');
+                    loginAttempts = 0;
+                    lockoutUntil = 0;
+                }
+            }, 1000);
+        } else {
+            errEl.textContent = `PIN Salah. ${MAX_ATTEMPTS - loginAttempts} percobaan tersisa.`;
+        }
+    }
+
+    // ── ENTER ADMIN PANEL ──────────────────────────────────────────────────────
+    function enterAdminPanel() {
+        isAuthenticated = true;
+        document.getElementById('admin-panel').classList.remove('hidden');
+        document.getElementById('bottom-nav').classList.remove('hidden');
+        initSocket();
+        loadDashboardData();
+        loadUsers();
+        loadPayments('pending');
+        loadConfig();
+    }
+
+    function adminLogout() {
+        sessionStorage.removeItem(SESSION_KEY);
+        if (socket) socket.disconnect();
+        isAuthenticated = false;
+        document.getElementById('admin-panel').classList.add('hidden');
+        document.getElementById('bottom-nav').classList.add('hidden');
+        clearPinInputs();
+        document.getElementById('pin-error').classList.add('hidden');
+        showLoginScreen();
+    }
+
+    // ── SOCKET.IO ──────────────────────────────────────────────────────────────
+    function initSocket() {
+        socket = io({ auth: { token: adminToken, role: 'admin' } });
+
+        socket.on('connect', () => {
+            setSocketStatus(true);
+            socket.emit('admin:join', { token: adminToken });
+        });
+
+        socket.on('disconnect', () => setSocketStatus(false));
+        socket.on('connect_error', () => setSocketStatus(false));
+
+        // ── Real-time Events ──
+        socket.on('admin:stats_update', (data) => {
+            updateDashboardStats(data);
+        });
+
+        socket.on('admin:new_payment', (payment) => {
+            addActivityFeedItem(`💳 Pembayaran baru dari <b class="text-white">${payment.userId}</b> — Rp ${fmtNum(payment.amount)}`, 'amber');
+            loadPayments(currentPaymentFilter);
+            updatePendingBadge();
+            showToast('💳 Pembayaran Baru Masuk!', `User: ${payment.userId}`, 'amber');
+        });
+
+        socket.on('admin:new_user', (user) => {
+            addActivityFeedItem(`👤 User baru mendaftar: <b class="text-white">${user.userId}</b>`, 'blue');
+            loadUsers();
+        });
+
+        socket.on('admin:user_banned', (data) => {
+            addActivityFeedItem(`🚫 User dibanned: <b class="text-white">${data.userId}</b>`, 'rose');
+        });
+
+        socket.on('admin:online_users', (data) => {
+            updateOnlineUsers(data.users || [], data.count || 0);
+        });
+
+        socket.on('admin:payment_verified', (data) => {
+            addActivityFeedItem(`✅ Pembayaran diverifikasi: <b class="text-white">${data.userId}</b>`, 'emerald');
+        });
+
+        socket.on('admin:withdrawal_request', (data) => {
+            addActivityFeedItem(`💸 Permintaan WD: <b class="text-white">${data.userId}</b> — $${data.amount}`, 'purple');
+            showToast('💸 Permintaan Penarikan', `${data.userId} minta WD $${data.amount}`, 'purple');
+        });
+
+        // Polling backup untuk stats (tiap 15 detik)
+        setInterval(loadDashboardData, 15000);
+    }
+
+    function setSocketStatus(connected) {
+        const dot   = document.getElementById('socket-dot');
+        const label = document.getElementById('socket-label');
+        if (connected) {
+            dot.className   = 'w-1.5 h-1.5 rounded-full bg-green-500 live-dot';
+            label.textContent = 'Live';
+            label.className   = 'text-green-400';
+        } else {
+            dot.className   = 'w-1.5 h-1.5 rounded-full bg-rose-500';
+            label.textContent = 'Offline';
+            label.className   = 'text-rose-400';
+        }
+    }
+
+    // ── API HELPER ─────────────────────────────────────────────────────────────
+    async function adminApi(endpoint, body = {}) {
+        const res = await fetch('/admin/api/' + endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + adminToken
+            },
+            body: JSON.stringify(body)
+        });
+        if (res.status === 401) { adminLogout(); throw new Error('Unauthorized'); }
+        return await res.json();
+    }
+
+    // ── DASHBOARD ──────────────────────────────────────────────────────────────
+    async function loadDashboardData() {
+        try {
+            const data = await adminApi('stats');
+            updateDashboardStats(data);
+        } catch(e) {}
+    }
+
+    function updateDashboardStats(data) {
+        if (!data) return;
+        setText('stat-total-users',    data.totalUsers    ?? '—');
+        setText('stat-active-today',   data.activeToday   ?? '—');
+        setText('stat-pending-payments', data.pendingPayments ?? '—');
+        setText('stat-banned',         data.bannedUsers   ?? '—');
+        setText('stat-total-balance',  '$' + (data.totalBalance ?? 0).toFixed(2));
+        setText('stat-total-wd',       '$' + (data.totalWdToday ?? 0).toFixed(2));
+        setText('stat-revenue',        'Rp ' + fmtNum(data.totalRevenue ?? 0));
+        setText('stat-referrals',      data.totalReferrals ?? '0');
+        updatePendingBadge(data.pendingPayments);
+    }
+
+    // ── ACTIVITY FEED ──────────────────────────────────────────────────────────
+    function addActivityFeedItem(msg, color = 'blue') {
+        const feed = document.getElementById('activity-feed');
+        const colorMap = { blue:'text-blue-400', amber:'text-amber-400', emerald:'text-emerald-400', rose:'text-rose-400', purple:'text-purple-400' };
+        const now = new Date().toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+
+        // Remove placeholder
+        const placeholder = feed.querySelector('p');
+        if (placeholder && placeholder.textContent.includes('Menunggu')) placeholder.remove();
+
+        const el = document.createElement('div');
+        el.className = `flex items-start gap-2 toast-item`;
+        el.innerHTML = `<span class="text-slate-600 shrink-0">${now}</span><span class="${colorMap[color] || 'text-blue-400'}">${msg}</span>`;
+        feed.insertBefore(el, feed.firstChild);
+
+        // Max 50 items
+        while (feed.children.length > 50) feed.removeChild(feed.lastChild);
+    }
+
+    function clearActivityFeed() {
+        document.getElementById('activity-feed').innerHTML = '<p class="text-slate-600 text-center pt-10">Feed dibersihkan.</p>';
+    }
+
+    // ── ONLINE USERS ───────────────────────────────────────────────────────────
+    function updateOnlineUsers(users, count) {
+        document.getElementById('online-count').textContent = count;
+        const list = document.getElementById('online-users-list');
+        if (!users.length) {
+            list.innerHTML = '<p class="text-[10px] text-slate-600 text-center py-4 font-mono">Tidak ada user online</p>';
+            return;
+        }
+        list.innerHTML = users.map(u => `
+            <div class="flex items-center justify-between py-1.5 border-b border-slate-800/40 last:border-0">
+                <span class="text-[10px] font-mono text-white">${u.userId || u.id}</span>
+                <div class="flex items-center gap-1.5">
+                    <div class="w-1.5 h-1.5 rounded-full bg-green-500"></div>
+                    <span class="text-[9px] text-slate-500">${u.since || 'online'}</span>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // ── BROADCAST ──────────────────────────────────────────────────────────────
+    async function sendBroadcast() {
+        const msg  = document.getElementById('broadcast-msg').value.trim();
+        const type = document.getElementById('broadcast-type').value;
+        if (!msg) { showToast('⚠️ Broadcast kosong!', 'Tulis pesan dulu.', 'amber'); return; }
+        try {
+            await adminApi('broadcast', { message: msg, type });
+            showToast('📢 Broadcast Terkirim!', `Ke semua user: "${msg.substring(0,40)}..."`, 'emerald');
+            document.getElementById('broadcast-msg').value = '';
+            addActivityFeedItem(`📢 Broadcast dikirim: "${msg.substring(0,50)}..."`, 'amber');
+        } catch(e) { showToast('❌ Gagal kirim broadcast', e.message, 'rose'); }
+    }
+
+    // ── USERS ──────────────────────────────────────────────────────────────────
+    async function loadUsers() {
+        document.getElementById('users-loading').classList.remove('hidden');
+        try {
+            const data = await adminApi('users', { filter: currentUserFilter });
+            allUsers = data.users || [];
+            renderUsers(allUsers);
+        } catch(e) {
+            document.getElementById('user-list').innerHTML = '<p class="text-[10px] text-rose-400 text-center py-6 font-mono">Gagal memuat data user.</p>';
+        } finally {
+            document.getElementById('users-loading').classList.add('hidden');
+        }
+    }
+
+    function renderUsers(users) {
+        const list = document.getElementById('user-list');
+        document.getElementById('users-shown').textContent = users.length;
+        if (!users.length) {
+            list.innerHTML = '<p class="text-[10px] text-slate-600 text-center py-8 font-mono">Tidak ada user ditemukan.</p>';
+            return;
+        }
+        list.innerHTML = users.map(u => `
+            <div class="data-row bg-slate-900/60 border border-slate-700/50 rounded-2xl p-3.5 cursor-pointer active:scale-[0.98] transition-all"
+                 onclick="openUserModal('${u.userId}')">
+                <div class="flex items-start justify-between gap-2 mb-2">
+                    <div class="flex-1 min-w-0">
+                        <p class="text-[11px] font-black text-white font-mono truncate">${u.userId}</p>
+                        <p class="text-[9px] text-slate-500 truncate mt-0.5">${u.paymentEmail || '—'}</p>
+                    </div>
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        ${u.isBanned
+                            ? '<span class="badge-banned text-[8px] font-black uppercase px-2 py-0.5 rounded-full">Banned</span>'
+                            : u.isVerified
+                                ? '<span class="badge-verified text-[8px] font-black uppercase px-2 py-0.5 rounded-full">Verified</span>'
+                                : '<span class="badge-active text-[8px] font-black uppercase px-2 py-0.5 rounded-full">Aktif</span>'
+                        }
+                    </div>
+                </div>
+                <div class="grid grid-cols-3 gap-2 text-center">
+                    <div>
+                        <p class="text-[10px] font-black text-emerald-400">$${(u.balance || 0).toFixed(2)}</p>
+                        <p class="text-[8px] text-slate-600">Saldo</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-black text-blue-400">${u.referralCount || 0}</p>
+                        <p class="text-[8px] text-slate-600">Referral</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-black text-slate-300">${fmtDate(u.createdAt)}</p>
+                        <p class="text-[8px] text-slate-600">Daftar</p>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function searchUsers(q) {
+        if (!q.trim()) { renderUsers(allUsers); return; }
+        const lower = q.toLowerCase();
+        renderUsers(allUsers.filter(u =>
+            (u.userId || '').toLowerCase().includes(lower) ||
+            (u.paymentEmail || '').toLowerCase().includes(lower)
+        ));
+    }
+
+    function filterUsers(filter) {
+        currentUserFilter = filter;
+        document.querySelectorAll('.filter-btn').forEach(b => {
+            b.className = b.className.replace(/bg-blue-500\/20 border-blue-500\/40 text-blue-400/g, 'bg-slate-900\/60 border-slate-700\/40 text-slate-400');
+        });
+        const active = document.getElementById('filter-' + filter);
+        if (active) active.className = active.className.replace('bg-slate-900/60 border-slate-700/40 text-slate-400', 'bg-blue-500/20 border-blue-500/40 text-blue-400');
+        loadUsers();
+    }
+
+    // ── USER MODAL ─────────────────────────────────────────────────────────────
+    async function openUserModal(userId) {
+        selectedUser = allUsers.find(u => u.userId === userId) || { userId };
+        const u = selectedUser;
+
+        document.getElementById('modal-user-id').textContent   = u.userId || '—';
+        document.getElementById('modal-user-email').textContent = u.paymentEmail || '—';
+        document.getElementById('modal-balance-input').value    = u.balance || 0;
+        document.getElementById('modal-admin-note').value       = '';
+
+        const banBtn = document.getElementById('modal-ban-btn');
+        if (u.isBanned) {
+            banBtn.textContent  = '🔓 Unban User';
+            banBtn.className    = banBtn.className.replace('rose', 'emerald');
+        } else {
+            banBtn.textContent  = '🚫 Ban User';
+            banBtn.className    = banBtn.className.replace('emerald', 'rose');
+        }
+
+        document.getElementById('modal-user-info').innerHTML = `
+            <div class="bg-slate-950/60 rounded-xl p-2.5 text-center"><p class="text-[8px] text-slate-500 font-bold uppercase tracking-widest">Status</p><p class="text-[10px] font-black mt-0.5 ${u.isBanned ? 'text-rose-400' : u.isVerified ? 'text-emerald-400' : 'text-blue-400'}">${u.isBanned ? 'Banned' : u.isVerified ? 'Verified' : 'Aktif'}</p></div>
+            <div class="bg-slate-950/60 rounded-xl p-2.5 text-center"><p class="text-[8px] text-slate-500 font-bold uppercase tracking-widest">Saldo</p><p class="text-[10px] font-black text-emerald-400 mt-0.5">$${(u.balance||0).toFixed(2)}</p></div>
+            <div class="bg-slate-950/60 rounded-xl p-2.5 text-center"><p class="text-[8px] text-slate-500 font-bold uppercase tracking-widest">Referral</p><p class="text-[10px] font-black text-blue-400 mt-0.5">${u.referralCount||0}</p></div>
+            <div class="bg-slate-950/60 rounded-xl p-2.5 text-center"><p class="text-[8px] text-slate-500 font-bold uppercase tracking-widest">Daftar</p><p class="text-[10px] font-black text-white mt-0.5">${fmtDate(u.createdAt)}</p></div>
+        `;
+
+        const modal = document.getElementById('user-detail-modal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        setTimeout(() => document.getElementById('user-detail-card').classList.add('open'), 10);
+    }
+
+    function closeUserModal() {
+        document.getElementById('user-detail-card').classList.remove('open');
+        setTimeout(() => {
+            document.getElementById('user-detail-modal').classList.add('hidden');
+            document.getElementById('user-detail-modal').classList.remove('flex');
+        }, 250);
+    }
+
+    async function toggleBanUser() {
+        if (!selectedUser) return;
+        const isBanned = selectedUser.isBanned;
+        const note     = document.getElementById('modal-admin-note').value.trim();
+        try {
+            await adminApi('ban_user', { userId: selectedUser.userId, ban: !isBanned, reason: note });
+            showToast(isBanned ? '🔓 User di-unban' : '🚫 User dibanned', selectedUser.userId, isBanned ? 'emerald' : 'rose');
+            closeUserModal();
+            loadUsers();
+            // Broadcast ke user yang dibanned
+            if (!isBanned && socket) socket.emit('admin:force_ban', { userId: selectedUser.userId });
+        } catch(e) { showToast('❌ Gagal', e.message, 'rose'); }
+    }
+
+    async function updateUserBalance() {
+        if (!selectedUser) return;
+        const balance = parseFloat(document.getElementById('modal-balance-input').value);
+        if (isNaN(balance)) { showToast('⚠️ Nominal tidak valid', '', 'amber'); return; }
+        try {
+            await adminApi('update_balance', { userId: selectedUser.userId, balance });
+            showToast('✅ Saldo diperbarui', `${selectedUser.userId}: $${balance.toFixed(2)}`, 'emerald');
+            closeUserModal();
+            loadUsers();
+        } catch(e) { showToast('❌ Gagal', e.message, 'rose'); }
+    }
+
+    async function verifyUserManual() {
+        if (!selectedUser) return;
+        const note = document.getElementById('modal-admin-note').value.trim();
+        try {
+            await adminApi('verify_user', { userId: selectedUser.userId, note });
+            showToast('✅ User diverifikasi', selectedUser.userId, 'emerald');
+            closeUserModal();
+            loadUsers();
+        } catch(e) { showToast('❌ Gagal', e.message, 'rose'); }
+    }
+
+    async function resetUserPin() {
+        if (!selectedUser) return;
+        try {
+            const res = await adminApi('reset_pin', { userId: selectedUser.userId });
+            showToast('🔑 PIN direset', `PIN baru: ${res.newPin || 'dikirim ke user'}`, 'amber');
+            closeUserModal();
+        } catch(e) { showToast('❌ Gagal', e.message, 'rose'); }
+    }
+
+    async function deleteUser() {
+        if (!selectedUser) return;
+        const note = document.getElementById('modal-admin-note').value.trim();
+        if (!note) { showToast('⚠️ Isi catatan dulu!', 'Alasan penghapusan wajib diisi.', 'amber'); return; }
+        try {
+            await adminApi('delete_user', { userId: selectedUser.userId, reason: note });
+            showToast('🗑️ Akun dihapus', selectedUser.userId, 'rose');
+            closeUserModal();
+            loadUsers();
+        } catch(e) { showToast('❌ Gagal', e.message, 'rose'); }
+    }
+
+    // ── PAYMENTS ───────────────────────────────────────────────────────────────
+    async function loadPayments(status = 'pending') {
+        currentPaymentFilter = status;
+        try {
+            const data = await adminApi('payments', { status });
+            allPayments = data.payments || [];
+            renderPayments(allPayments);
+        } catch(e) {
+            document.getElementById('payment-list').innerHTML = '<p class="text-[10px] text-rose-400 text-center py-6 font-mono">Gagal memuat pembayaran.</p>';
+        }
+    }
+
+    function renderPayments(payments) {
+        const list = document.getElementById('payment-list');
+        document.getElementById('payments-shown').textContent = payments.length;
+        if (!payments.length) {
+            list.innerHTML = '<p class="text-[10px] text-slate-600 text-center py-8 font-mono">Tidak ada pembayaran.</p>';
+            return;
+        }
+        list.innerHTML = payments.map(p => `
+            <div class="data-row bg-slate-900/60 border border-slate-700/50 rounded-2xl p-3.5 cursor-pointer active:scale-[0.98] transition-all"
+                 onclick="openPaymentModal('${p.id}')">
+                <div class="flex items-start justify-between gap-2 mb-2">
+                    <div>
+                        <p class="text-[11px] font-black text-white font-mono">${p.userId}</p>
+                        <p class="text-[9px] text-slate-500 mt-0.5 font-mono">${p.id}</p>
+                    </div>
+                    <span class="badge-${p.status} text-[8px] font-black uppercase px-2 py-0.5 rounded-full shrink-0">${p.status}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-black text-amber-400">Rp ${fmtNum(p.amount)}</p>
+                        <p class="text-[9px] text-slate-500">${p.packageName || '—'}</p>
+                    </div>
+                    <p class="text-[9px] text-slate-500 font-mono">${fmtDate(p.createdAt)}</p>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function filterPayments(status) {
+        document.querySelectorAll('.pay-filter-btn').forEach(b => {
+            b.className = b.className
+                .replace(/bg-\w+-500\/20 border-\w+-500\/40 text-\w+-400/g, '')
+                + ' bg-slate-900/60 border-slate-700/40 text-slate-400';
+        });
+        const active = document.getElementById('pay-filter-' + status);
+        if (active) {
+            const colorMap = { pending:'amber', verified:'emerald', rejected:'rose', all:'blue' };
+            const c = colorMap[status] || 'blue';
+            active.className = active.className.replace('bg-slate-900/60 border-slate-700/40 text-slate-400', `bg-${c}-500/20 border-${c}-500/40 text-${c}-400`);
+        }
+        loadPayments(status);
+    }
+
+    function openPaymentModal(paymentId) {
+        selectedPayment = allPayments.find(p => p.id === paymentId);
+        if (!selectedPayment) return;
+        const p = selectedPayment;
+
+        document.getElementById('pay-modal-id').textContent = p.id;
+        document.getElementById('pay-modal-info').innerHTML = `
+            <div class="flex justify-between items-center py-2 border-b border-slate-800/40">
+                <span class="text-slate-500">User ID</span><span class="text-white font-black font-mono text-xs">${p.userId}</span>
+            </div>
+            <div class="flex justify-between items-center py-2 border-b border-slate-800/40">
+                <span class="text-slate-500">Nominal</span><span class="text-amber-400 font-black">Rp ${fmtNum(p.amount)}</span>
+            </div>
+            <div class="flex justify-between items-center py-2 border-b border-slate-800/40">
+                <span class="text-slate-500">Paket</span><span class="text-white font-bold text-xs">${p.packageName || '—'}</span>
+            </div>
+            <div class="flex justify-between items-center py-2 border-b border-slate-800/40">
+                <span class="text-slate-500">Status</span><span class="badge-${p.status} text-[9px] font-black uppercase px-2 py-0.5 rounded-full">${p.status}</span>
+            </div>
+            <div class="flex justify-between items-center py-2">
+                <span class="text-slate-500">Waktu</span><span class="text-white font-bold text-xs font-mono">${fmtDate(p.createdAt)}</span>
+            </div>
+        `;
+
+        if (p.proofUrl) {
+            document.getElementById('pay-modal-proof').classList.remove('hidden');
+            document.getElementById('pay-proof-img').src = p.proofUrl;
+        } else {
+            document.getElementById('pay-modal-proof').classList.add('hidden');
+        }
+
+        const modal = document.getElementById('payment-detail-modal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        setTimeout(() => document.getElementById('payment-detail-card').classList.add('open'), 10);
+    }
+
+    function closePaymentModal() {
+        document.getElementById('payment-detail-card').classList.remove('open');
+        setTimeout(() => {
+            document.getElementById('payment-detail-modal').classList.add('hidden');
+            document.getElementById('payment-detail-modal').classList.remove('flex');
+        }, 250);
+    }
+
+    async function verifyPayment(status) {
+        if (!selectedPayment) return;
+        try {
+            await adminApi('verify_payment', { paymentId: selectedPayment.id, status, userId: selectedPayment.userId });
+            showToast(
+                status === 'verified' ? '✅ Pembayaran Diverifikasi!' : '❌ Pembayaran Ditolak',
+                `User: ${selectedPayment.userId}`,
+                status === 'verified' ? 'emerald' : 'rose'
+            );
+            addActivityFeedItem(`${status === 'verified' ? '✅' : '❌'} Pembayaran ${status} — <b class="text-white">${selectedPayment.userId}</b>`, status === 'verified' ? 'emerald' : 'rose');
+            closePaymentModal();
+            loadPayments(currentPaymentFilter);
+            loadDashboardData();
+            // Real-time push ke user
+            if (socket) socket.emit('admin:payment_action', { paymentId: selectedPayment.id, status, userId: selectedPayment.userId });
+        } catch(e) { showToast('❌ Gagal', e.message, 'rose'); }
+    }
+
+    function updatePendingBadge(count) {
+        const badge = document.getElementById('pending-badge');
+        const c = count ?? allPayments.filter(p => p.status === 'pending').length;
+        if (c > 0) {
+            badge.textContent = c > 99 ? '99+' : c;
+            badge.classList.remove('hidden');
+            badge.classList.add('flex');
+        } else {
+            badge.classList.add('hidden');
+            badge.classList.remove('flex');
+        }
+    }
+
+    // ── SYSTEM / CONFIG ────────────────────────────────────────────────────────
+    async function loadConfig() {
+        try {
+            const data = await adminApi('config');
+            if (data.miningRate)    document.getElementById('cfg-mining-rate').value    = data.miningRate;
+            if (data.welcomeBonus)  document.getElementById('cfg-welcome-bonus').value  = data.welcomeBonus;
+            if (data.minWithdraw)   document.getElementById('cfg-min-wd').value          = data.minWithdraw;
+            if (data.maintenance)   document.getElementById('toggle-maintenance').checked = data.maintenance;
+            if (data.maintenanceMsg)document.getElementById('maintenance-msg').value     = data.maintenanceMsg;
+            if (data.announcement)  document.getElementById('announcement-text').value   = data.announcement;
+        } catch(e) {}
+    }
+
+    async function saveConfig() {
+        const cfg = {
+            miningRate:   parseFloat(document.getElementById('cfg-mining-rate').value)   || 0.005,
+            welcomeBonus: parseFloat(document.getElementById('cfg-welcome-bonus').value) || 5,
+            minWithdraw:  parseFloat(document.getElementById('cfg-min-wd').value)        || 10,
+        };
+        try {
+            await adminApi('save_config', cfg);
+            showToast('💾 Konfigurasi Disimpan', 'Perubahan langsung aktif.', 'emerald');
+            if (socket) socket.emit('admin:config_update', cfg);
+        } catch(e) { showToast('❌ Gagal', e.message, 'rose'); }
+    }
+
+    async function toggleMaintenance(enabled) {
+        const msg = document.getElementById('maintenance-msg').value.trim();
+        try {
+            await adminApi('maintenance', { enabled, message: msg });
+            showToast(enabled ? '🔧 Maintenance Aktif' : '✅ Maintenance Dimatikan', '', enabled ? 'amber' : 'emerald');
+            if (socket) socket.emit('admin:maintenance', { enabled, message: msg });
+        } catch(e) { showToast('❌ Gagal', e.message, 'rose'); }
+    }
+
+    async function saveAnnouncement() {
+        const text = document.getElementById('announcement-text').value.trim();
+        if (!text) { showToast('⚠️ Pengumuman kosong', '', 'amber'); return; }
+        try {
+            await adminApi('announcement', { text });
+            showToast('📌 Pengumuman Disimpan', 'Aktif di semua akun user.', 'blue');
+            if (socket) socket.emit('admin:announcement', { text });
+        } catch(e) { showToast('❌ Gagal', e.message, 'rose'); }
+    }
+
+    async function clearAnnouncement() {
+        try {
+            await adminApi('announcement', { text: '' });
+            document.getElementById('announcement-text').value = '';
+            showToast('🗑️ Pengumuman Dihapus', '', 'rose');
+            if (socket) socket.emit('admin:announcement', { text: '' });
+        } catch(e) {}
+    }
+
+    // ── DANGER ACTIONS ─────────────────────────────────────────────────────────
+    function confirmDangerAction(action, msg) {
+        dangerAction = action;
+        document.getElementById('danger-modal-msg').textContent = msg;
+        document.getElementById('danger-modal').classList.remove('hidden');
+        document.getElementById('danger-modal').classList.add('flex');
+    }
+
+    function closeDangerModal() {
+        document.getElementById('danger-modal').classList.add('hidden');
+        document.getElementById('danger-modal').classList.remove('flex');
+        dangerAction = null;
+    }
+
+    async function executeDangerAction() {
+        if (!dangerAction) return;
+        try {
+            await adminApi('danger_action', { action: dangerAction });
+            showToast('✅ Aksi Berhasil', dangerAction, 'emerald');
+            closeDangerModal();
+            loadUsers();
+            loadPayments(currentPaymentFilter);
+            loadDashboardData();
+        } catch(e) { showToast('❌ Gagal', e.message, 'rose'); }
+    }
+
+    // ── TABS ───────────────────────────────────────────────────────────────────
+    function switchTab(tab) {
+        currentTab = tab;
+        const panels = ['dashboard', 'users', 'payments', 'system'];
+        panels.forEach(p => {
+            const panel = document.getElementById('panel-' + p);
+            const tabBtn = document.getElementById('tab-' + p);
+            const navBtn = document.getElementById('nav-' + p);
+            if (p === tab) {
+                panel.classList.remove('hidden');
+                tabBtn && tabBtn.classList.replace('tab-inactive', 'tab-active');
+                if (navBtn) { navBtn.className = navBtn.className.replace('text-slate-500', 'text-blue-400 bg-blue-500/10'); }
+            } else {
+                panel.classList.add('hidden');
+                tabBtn && tabBtn.classList.replace('tab-active', 'tab-inactive');
+                if (navBtn) { navBtn.className = navBtn.className.replace('text-blue-400 bg-blue-500/10', 'text-slate-500'); }
+            }
+        });
+        if (tab === 'users')    loadUsers();
+        if (tab === 'payments') loadPayments(currentPaymentFilter);
+        if (tab === 'system')   loadConfig();
+    }
+
+    // ── TOAST ──────────────────────────────────────────────────────────────────
+    function showToast(title, msg, type = 'blue') {
+        const colorMap = {
+            blue:   'border-blue-500/40 bg-blue-500/15 text-blue-300',
+            emerald:'border-emerald-500/40 bg-emerald-500/15 text-emerald-300',
+            amber:  'border-amber-500/40 bg-amber-500/15 text-amber-300',
+            rose:   'border-rose-500/40 bg-rose-500/15 text-rose-300',
+            purple: 'border-purple-500/40 bg-purple-500/15 text-purple-300',
+        };
+        const container = document.getElementById('toast-container');
+        const el = document.createElement('div');
+        el.className = `toast-item pointer-events-auto border rounded-2xl px-4 py-3 shadow-xl w-full max-w-[340px] ${colorMap[type] || colorMap.blue}`;
+        el.innerHTML = `<p class="text-xs font-black">${title}</p>${msg ? `<p class="text-[10px] mt-0.5 opacity-80">${msg}</p>` : ''}`;
+        container.appendChild(el);
+        setTimeout(() => { el.classList.add('toast-exit'); setTimeout(() => el.remove(), 350); }, 3500);
+    }
+
+    // ── UTILS ──────────────────────────────────────────────────────────────────
+    function setText(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
+    function fmtNum(n) { return (n || 0).toLocaleString('id-ID'); }
+    function fmtDate(ts) {
+        if (!ts) return '—';
+        const d = new Date(ts);
+        return d.toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'2-digit' });
+    }
+
+    </script>
+</body>
+</html>
