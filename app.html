@@ -3053,57 +3053,62 @@
         }
 
         // --- SISTEM LOAD DATA DENGAN API ---
-async function loadDataFromServer(userId, pin = "") {
-    try {
-        const response = await fetch(API_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                action: 'load_data',
-                userId: userId,
-                pinCode: pin
-            })
-        });
-        if (!response.ok) {
-            return null;
-        }
-        const textData = await response.text();
-        if (!textData || textData.trim() === "" || textData.trim().startsWith("<")) {
-            return null;
-        }
-        const result = JSON.parse(textData);
-        
-        if (result.status === 'error' && result.message === 'BANNED') {
-            document.getElementById('banned-screen').classList.remove('hidden');
-            return null;
-        } else if (result.status === 'error' && result.message === 'User not found') {
-            return { error: 'not_found' };
-        } else if (result.status === 'wrong_pin') {
-            return { error: 'wrong_pin' };
-        } else if (result.status === 'error' && result.message === 'TOO_MANY_ATTEMPTS') {
-            return { error: 'too_many' };
-        } else if (result.status === 'success') {
-            document.getElementById('banned-screen').classList.add('hidden');
-            if (result.server_time) {
-                serverTimeOffset = result.server_time - Date.now();
-            }
-            ingestRefCfg(result);
+        async function loadDataFromServer(userId, pin = "") {
             try {
-                window.NM_NEEDS_SOURCE = !!result.needs_source;
-                if (window.NM_NEEDS_SOURCE) setTimeout(function () { try { window.maybeAskSource && window.maybeAskSource(); } catch (e) {} }, 800);
-            } catch (e) {}
-            return {
-                appData: result.appData,
-                needs_pin: result.require_pin_setup || false,
-                global_settings: result.global_settings
-            };
+                // [FIX BUG8] PIN dikirim via POST body — tidak muncul di URL/server log
+                const fetchUrl = `${API_URL}?action=load_data&user_id=${userId}&_t=${Date.now()}`;
+                const fetchOpts = pin
+                    ? { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({pin}) }
+                    : {};
+
+                const response = await fetch(fetchUrl, fetchOpts);
+                if (!response.ok) {
+                    return null;
+                }
+                const textData = await response.text();
+                if (!textData || textData.trim() === "" || textData.trim().startsWith("<")) {
+                    return null;
+                }
+                const result = JSON.parse(textData);
+                
+                if (result.status === 'error' && result.message === 'BANNED') {
+                    document.getElementById('banned-screen').classList.remove('hidden');
+                    return null;
+                } else if (result.status === 'error' && result.message === 'User not found') {
+                    return { error: 'not_found' }; // FITUR BARU: Tangkap error user tidak ditemukan
+                } else if (result.status === 'wrong_pin') {
+                    return { error: 'wrong_pin' }; // Kasih tahu form login bahwa PIN salah
+                } else if (result.status === 'captcha_required') {
+                    return { error: 'captcha_required' }; // perlu verifikasi Turnstile (setelah beberapa kali salah PIN)
+                } else if (result.status === 'error' && result.message === 'TOO_MANY_ATTEMPTS') {
+                    return { error: 'too_many' };
+                } else if (result.status === 'success') {
+                    document.getElementById('banned-screen').classList.add('hidden');
+                    
+                    // [CRITICAL PATCH] Injeksi perhitungan selisih waktu server (Anti-Cheat Waktu)
+                    if (result.server_time) {
+                        serverTimeOffset = result.server_time - Date.now();
+                    }
+                    ingestRefCfg(result); // sinkron persen reward referral dari server
+
+                    // [SURVEY AKUISISI] Tandai kalau user belum jawab sumber, lalu jadwalkan tanya.
+                    try {
+                        window.NM_NEEDS_SOURCE = !!result.needs_source;
+                        if (window.NM_NEEDS_SOURCE) setTimeout(function () { try { window.maybeAskSource && window.maybeAskSource(); } catch (e) {} }, 800);
+                    } catch (e) {}
+
+                    return {
+                        appData: result.appData,
+                        needs_pin: result.require_pin_setup || false,
+                        global_settings: result.global_settings
+                    };
+                }
+                return null;
+            } catch (error) {
+                console.log("Sinkronisasi server dilewati.");
+                return null;
+            }
         }
-        return null;
-    } catch (error) {
-        console.log("Sinkronisasi server dilewati.", error);
-        return null;
-    }
-}
 
         function getLocalData() {
             let savedData = localStorage.getItem(STORAGE_KEY);
@@ -3300,45 +3305,47 @@ async function loadDataFromServer(userId, pin = "") {
         }
 
         // Ubah menjadi async function agar bisa mengembalikan Promise
-async function saveDataToServer(isRegister = false) {
-    if (!API_URL) return { status: 'no_api' };
-    
-    // JANGAN kirim lagi kalau ini registrasi ulang (dicegah di executeRegistration)
-    if (isRegister) {
-        return { status: 'success', message: 'skipped' };
-    }
-    
-    let payload = {
-        action: 'save_data',
-        userId: appData.userId,
-        appData: appData,
-        isRegister: false
-    };
+        async function saveDataToServer(isRegister = false) {
+            if (!API_URL) return { status: 'no_api' };
+            
+            let payload = {
+                action: 'save_data',
+                userId: appData.userId,
+                appData: appData,
+                isRegister: isRegister // Penanda mutlak ke server
+            };
 
-    if (userPinCode) {
-        payload.pinCode = userPinCode;
-    }
+            // [KEAMANAN] Proteksi bot ditangani server-side (rate limiting, IP check).
 
-    try {
-        const response = await fetch(API_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        
-        if (!response.ok) throw new Error("HTTP status " + response.status);
-        const text = await response.text();
-        if (!text || text.trim() === "" || text.trim().startsWith("<")) {
-            return { status: 'error', message: 'INVALID_RESPONSE' };
-        }
-        
-        const data = JSON.parse(text);
-        return data;
-    } catch (error) {
-        console.log("Sync tertunda");
-        return { status: 'error', message: 'NETWORK_ERROR' };
-    }
-}
+            // Kirim PIN jika ada (saat daftar baru atau update user lama)
+            if (userPinCode) {
+                payload.pinCode = userPinCode;
+            }
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!response.ok) throw new Error("HTTP status " + response.status);
+                const text = await response.text();
+                if (!text || text.trim() === "" || text.trim().startsWith("<")) {
+                    // [FIX SESI BERAKHIR] Server balas HTML/kosong = gangguan parah, jangan dianggap OK.
+                    return { status: 'error', message: 'INVALID_RESPONSE' };
+                }
+                
+                const data = JSON.parse(text);
+                
+                // [BUG FIX #2]: Update referralCount dari response save_data agar tidak stale
+                if (data && data.status === 'success' && data.referralCount !== undefined) {
+                    appData.referralCount      = data.referralCount;
+                    appData.validReferralCount = data.validReferralCount || 0;
+                    if (document.getElementById('ref-count')) {
+                        document.getElementById('ref-count').innerText = appData.referralCount;
+                    }
+                }
                 
                 const bannedScreen = document.getElementById('banned-screen');
                 const deletedScreen = document.getElementById('deleted-screen');
@@ -6440,120 +6447,116 @@ async function saveDataToServer(isRegister = false) {
             }, 300);
         }
 
-async function executeRegistration() {
-    const pin = getPinValue('reg-pin');
-    const regGmailInput = document.getElementById('reg-gmail');
-    const regGmailVal = regGmailInput ? regGmailInput.value.trim().toLowerCase() : '';
-    
-    if (!regGmailVal || !regGmailVal.includes('@') || !regGmailVal.includes('.')) {
-        showAlert("Gmail Wajib Diisi ✉️", "Masukkan Gmail yang valid untuk keperluan upgrade akun.");
-        if (regGmailInput) regGmailInput.focus();
-        return;
-    }
-    
-    if (pin.length < 6) {
-        showAlert("PIN Tidak Valid", "Silakan lengkapi 6 digit PIN terlebih dahulu!");
-        return;
-    }
+        async function executeRegistration() {
+            const level = selectedRegistrationLevel;
+            const pin = getPinValue('reg-pin');
+            const regGmailInput = document.getElementById('reg-gmail');
+            const regGmailVal = regGmailInput ? regGmailInput.value.trim().toLowerCase() : '';
+            
+            if (!regGmailVal || !regGmailVal.includes('@') || !regGmailVal.includes('.')) {
+                showAlert("Gmail Wajib Diisi ✉️", "Masukkan Gmail yang valid untuk keperluan upgrade akun.");
+                if (regGmailInput) regGmailInput.focus();
+                return;
+            }
+            
+            if (pin.length < 6) {
+                showAlert("PIN Tidak Valid", "Silakan lengkapi 6 digit PIN terlebih dahulu!");
+                return;
+            }
 
-    const btnReg = document.getElementById('btn-execute-reg');
-    const originalBtnText = btnReg ? btnReg.innerText : '';
-    if (btnReg) { 
-        btnReg.innerText = "Memproses..."; 
-        btnReg.classList.add('opacity-50', 'pointer-events-none'); 
-    }
+            const btnReg = document.getElementById('btn-execute-reg');
+            const originalBtnText = btnReg ? btnReg.innerText : '';
+            if (btnReg) { btnReg.innerText = "Memproses..."; btnReg.classList.add('opacity-50','pointer-events-none'); }
 
-    const refCode = document.getElementById('input-ref-code') ? document.getElementById('input-ref-code').value.trim().toUpperCase() : '';
-    const regGmail = regGmailVal;
+            const refCode = document.getElementById('input-ref-code') ? document.getElementById('input-ref-code').value.trim().toUpperCase() : '';
+            const regGmail = regGmailVal;
 
-    // KIRIM LANGSUNG KE SERVER (TIDAK PAKAI saveDataToServer)
-    try {
-        const response = await fetch('/api', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                action: 'save_data',
-                isRegister: true,
-                pinCode: pin,
-                appData: {
-                    paymentEmail: regGmail,
-                    referredBy: refCode || null
+            // Validasi kode referral ke server (opsional — kalau gagal lanjutkan saja)
+            if (refCode && API_URL) {
+                try {
+                    const refCheck = await fetch(`${API_URL}?action=check_ref&ref=${refCode}`);
+                    const refData = await refCheck.json();
+                    if (refData.status === 'error' && refData.message && !refData.message.includes('tidak valid')) {
+                        showAlert("Kode Salah ⚠️", refData.message || "Kode undangan tidak terdaftar.");
+                        if (btnReg) { btnReg.innerText = originalBtnText; btnReg.classList.remove('opacity-50','pointer-events-none'); }
+                        closePinCreationModal();
+                        return;
+                    }
+                } catch(e) { /* Abaikan jika jaringan gagal */ }
+            }
+
+            // Siapkan data akun baru
+            const newUserId = 'USR-' + Math.random().toString(36).substr(2, 6).toUpperCase();
+            userPinCode = pin;
+            try { sessionStorage.setItem("aiCachedPin", pin); localStorage.setItem("aiCachedPin", pin); } catch(e) {}
+
+            appData.userId         = newUserId;
+            appData.paymentEmail   = regGmail;
+            appData.gmailConfirmed = true;
+            appData.isLoggedIn     = true;
+            appData.startDate      = Date.now();
+            appData.accountTier    = 'trial';
+            appData.serverVerified = false;
+            window._justRegisteredAt = Date.now();
+
+            // Simpan lokal DULU agar user tidak kehilangan akun meski internet putus
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(appData)); } catch(e) {}
+
+            if (btnReg) btnReg.innerText = "Mendaftarkan Akun...";
+
+            // Coba simpan ke server
+            let saveResult = null;
+            try {
+                saveResult = await saveDataToServer(true);
+            } catch(e) {
+                saveResult = { status: 'network_error', message: 'NETWORK_ERROR' };
+            }
+
+            // Jika server tidak tersedia, tetap lanjutkan (mode offline)
+            // Akun tersimpan lokal, akan sync otomatis saat online
+            if (!saveResult || saveResult.status === 'network_error' || saveResult.message === 'NETWORK_ERROR') {
+                console.warn('Server tidak tersedia saat registrasi. Akun tersimpan lokal.');
+                // Tetap lanjutkan — jangan rollback
+            } else if (saveResult.status === 'error') {
+                if (saveResult.message === 'GMAIL_TAKEN') {
+                    // Rollback hanya jika gmail sudah dipakai
+                    appData.userId = '';
+                    appData.isLoggedIn = false;
+                    appData.paymentEmail = '';
+                    appData.gmailConfirmed = false;
+                    localStorage.removeItem(STORAGE_KEY);
+                    window._justRegisteredAt = 0;
+                    if (btnReg) { btnReg.innerText = originalBtnText; btnReg.classList.remove('opacity-50','pointer-events-none'); }
+                    showAlert('Gmail Sudah Terdaftar ⚠️', saveResult.desc || 'Gmail ini sudah digunakan akun lain. Gunakan Gmail berbeda.');
+                    return;
                 }
-            })
-        });
-        
-        const result = await response.json();
-        
-        if (result.status === 'error') {
-            if (result.message === 'GMAIL_TAKEN') {
-                showAlert('Gmail Sudah Terdaftar ⚠️', 'Gmail ini sudah digunakan akun lain. Gunakan Gmail berbeda.');
-            } else {
-                showAlert('Registrasi Gagal', result.message || 'Terjadi kesalahan. Coba lagi.');
+                if (saveResult.message === 'USER_ID_DUPLICATE') {
+                    // Generate ulang ID baru
+                    appData.userId = 'USR-' + Math.random().toString(36).substr(2, 6).toUpperCase();
+                    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(appData)); } catch(e) {}
+                    try { await saveDataToServer(true); } catch(e) {}
+                }
+                // Error lainnya: tetap lanjutkan dengan data lokal
             }
-            if (btnReg) { 
-                btnReg.innerText = originalBtnText; 
-                btnReg.classList.remove('opacity-50', 'pointer-events-none'); 
+
+            // Klaim referral di background
+            if (refCode && API_URL && appData.userId) {
+                fetch(`${API_URL}?action=add&ref=${refCode}&new_user=${appData.userId}`)
+                    .then(r => r.json())
+                    .then(d => {
+                        if (d && d.status !== 'error') setTimeout(() => { serverSyncLoop(); }, 1500);
+                    }).catch(() => {});
             }
-            return;
+
+            if (btnReg) { btnReg.innerText = originalBtnText; btnReg.classList.remove('opacity-50','pointer-events-none'); }
+            closePinCreationModal();
+            document.getElementById('register-screen').classList.add('hidden');
+            
+            document.getElementById('generated-user-id').innerText = appData.userId;
+            const genModal = document.getElementById('id-generation-modal');
+            genModal.classList.remove('hidden');
+            setTimeout(() => genModal.classList.remove('opacity-0'), 10);
         }
-        
-        // REGISTRASI SUKSES DARI SERVER
-        const serverAppData = result.appData;
-        const newUserId = result.userId;
-        
-        // Update appData dengan data dari server
-        appData.userId = newUserId;
-        appData.paymentEmail = regGmail;
-        appData.gmailConfirmed = true;
-        appData.isLoggedIn = true;
-        appData.startDate = Date.now();
-        appData.accountTier = serverAppData.accountTier || 'trial';
-        appData.serverVerified = serverAppData.serverVerified || false;
-        appData.balance = serverAppData.balance || 5;
-        appData.totalWD = serverAppData.totalWD || 0;
-        appData.monthly = serverAppData.monthly || 0;
-        appData.history = serverAppData.history || [];
-        appData.referralCount = serverAppData.referralCount || 0;
-        appData.validReferralCount = serverAppData.validReferralCount || 0;
-        
-        userPinCode = pin;
-        try { 
-            sessionStorage.setItem("aiCachedPin", pin); 
-            localStorage.setItem("aiCachedPin", pin); 
-        } catch(e) {}
-        
-        // Simpan ke localStorage
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
-        window._justRegisteredAt = Date.now();
-        
-        // Klaim referral di background (jika ada kode)
-        if (refCode) {
-            fetch(`/api?action=add&ref=${refCode}&new_user=${newUserId}`).catch(() => {});
-        }
-        
-        if (btnReg) { 
-            btnReg.innerText = originalBtnText; 
-            btnReg.classList.remove('opacity-50', 'pointer-events-none'); 
-        }
-        
-        closePinCreationModal();
-        document.getElementById('register-screen').classList.add('hidden');
-        
-        document.getElementById('generated-user-id').innerText = newUserId;
-        const genModal = document.getElementById('id-generation-modal');
-        genModal.classList.remove('hidden');
-        
-        showAlert('Registrasi Berhasil! 🎉', `Akun ${newUserId} berhasil dibuat. Simpan ID Anda!`, true);
-        
-    } catch (err) {
-        console.error('Register error:', err);
-        showAlert('Gagal', 'Tidak dapat terhubung ke server. Pastikan server berjalan di localhost:3000');
-        if (btnReg) { 
-            btnReg.innerText = originalBtnText; 
-            btnReg.classList.remove('opacity-50', 'pointer-events-none'); 
-        }
-    }
-}
 
 
         function copyGeneratedId() {
