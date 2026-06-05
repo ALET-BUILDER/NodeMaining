@@ -654,68 +654,80 @@ app.post('/admin/api/ban_user', verifyAdmin, (req, res) => {
 });
 
 // Update balance
-// Update balance
+// ============ UPDATE BALANCE (FIXED) ============
 app.post('/admin/api/update_balance', verifyAdmin, (req, res) => {
   const { userId, balance, reason } = req.body;
-  console.log(`💰 Updating balance for ${userId} to ${balance}`);
+  console.log(`💰 [API] Updating balance for ${userId} to ${balance}`);
   
   try {
-    // Cek user exists
+    // Validate input
+    if (!userId) {
+      return res.json({ status: 'error', message: 'User ID required' });
+    }
+    const newBalance = parseFloat(balance);
+    if (isNaN(newBalance)) {
+      return res.json({ status: 'error', message: 'Invalid balance amount' });
+    }
+    
+    // Check if user exists
     const user = db.prepare(`SELECT * FROM users WHERE user_id = ?`).get(userId);
     if (!user) {
       return res.json({ status: 'error', message: 'User not found' });
     }
     
     // Update balance
-    const stmt = db.prepare(`UPDATE users SET balance = ? WHERE user_id = ?`);
-    stmt.run(balance, userId);
+    db.prepare(`UPDATE users SET balance = ? WHERE user_id = ?`).run(newBalance, userId);
     
     // Add transaction record
-    const diff = balance - user.balance;
-    if (Math.abs(diff) > 0.01) {
+    const diff = newBalance - user.balance;
+    if (Math.abs(diff) > 0.001) {
       db.prepare(`INSERT INTO transactions (user_id, amount, type, status, label, created_at) 
         VALUES (?, ?, 'plus', 'success', ?, strftime('%s', 'now'))`)
         .run(userId, diff, `Admin adjustment: ${reason || 'Manual update'}`);
     }
     
-    // Send realtime update to user
-    io.to(`user_${userId}`).emit('balance:updated', { balance });
+    // Send realtime update to user via socket
+    io.to(`user_${userId}`).emit('balance:updated', { balance: newBalance });
     
-    console.log(`✅ Balance updated: ${userId} → $${balance}`);
-    return res.json({ status: 'ok' });
+    console.log(`✅ Balance updated: ${userId} → $${newBalance}`);
+    return res.json({ status: 'ok', message: 'Balance updated successfully' });
   } catch (err) {
     console.error('Update balance error:', err);
     return res.json({ status: 'error', message: err.message });
   }
 });
 
-// Verify user (FIX: langsung buka gembok)
-// Verify user (FIX: pastikan update is_verified = 1)
-// Verify user (FIX: update is_verified dan account_tier)
+// ============ VERIFY USER (FIXED) ============
 app.post('/admin/api/verify_user', verifyAdmin, (req, res) => {
   const { userId, note } = req.body;
-  console.log(`🔐 Verifying user: ${userId}`);
+  console.log(`🔐 [API] Verifying user: ${userId}`);
   
   try {
-    // Cek user exists
+    // Validate input
+    if (!userId) {
+      return res.json({ status: 'error', message: 'User ID required' });
+    }
+    
+    // Check if user exists
     const user = db.prepare(`SELECT * FROM users WHERE user_id = ?`).get(userId);
     if (!user) {
       return res.json({ status: 'error', message: 'User not found' });
     }
     
-    // Update is_verified = 1 dan account_tier = 'basic'
-    const stmt = db.prepare(`UPDATE users SET is_verified = 1, account_tier = 'basic', admin_note = ? WHERE user_id = ?`);
-    stmt.run(note || 'Verified by admin', userId);
+    // Update is_verified = 1 and account_tier = 'basic'
+    db.prepare(`UPDATE users SET is_verified = 1, account_tier = 'basic', admin_note = ? WHERE user_id = ?`)
+      .run(note || 'Verified by admin', userId);
     
-    // Cek apakah berhasil
+    // Verify the update was successful
     const updated = db.prepare(`SELECT is_verified, account_tier FROM users WHERE user_id = ?`).get(userId);
     console.log(`✅ User ${userId} verified:`, updated);
     
-    // Kirim event ke user (biar UI update)
+    // Send events to user via socket
     io.to(`user_${userId}`).emit('user:verified', { userId });
     io.to(`user_${userId}`).emit('verification:complete', { verified: true });
+    io.to(`user_${userId}`).emit('balance:updated', { balance: user.balance });
     
-    return res.json({ status: 'ok' });
+    return res.json({ status: 'ok', message: 'User verified successfully' });
   } catch (err) {
     console.error('Verify error:', err);
     return res.json({ status: 'error', message: err.message });
