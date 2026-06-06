@@ -3136,7 +3136,15 @@ async function loadDataFromServer(userId, pin = "") {
             if (bannedScreen) {
                 bannedScreen.classList.remove('hidden');
             }
-            return null;
+            // Store ban state in localStorage so refresh keeps ban screen
+            try {
+                const storedData = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+                if (storedData) {
+                    storedData._isBanned = true;
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(storedData));
+                }
+            } catch(e) {}
+            return { _banned: true };
         }
 
         if (
@@ -3172,6 +3180,14 @@ async function loadDataFromServer(userId, pin = "") {
             if (bannedScreen) {
                 bannedScreen.classList.add('hidden');
             }
+            // Clear ban flag from localStorage
+            try {
+                const storedData = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+                if (storedData && storedData._isBanned) {
+                    delete storedData._isBanned;
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(storedData));
+                }
+            } catch(e) {}
 
             if (result.server_time) {
                 serverTimeOffset = result.server_time - Date.now();
@@ -3237,6 +3253,13 @@ async function loadDataFromServer(userId, pin = "") {
             let localData = getLocalData();
             let userIdToCheck = localData ? localData.userId : appData.userId;
             
+            // [BAN FIX] Jika localStorage menandai akun banned, langsung tampilkan ban screen
+            // dan verifikasi ke server untuk konfirmasi
+            if (localData && localData._isBanned === true && localData.userId) {
+                const bannedScreen = document.getElementById('banned-screen');
+                if (bannedScreen) bannedScreen.classList.remove('hidden');
+            }
+            
             // Saat inisialisasi awal (auto-login), kita asumsikan PIN tidak diperlukan kecuali mereka logout
             let serverResult = await loadDataFromServer(userIdToCheck); 
             
@@ -3248,6 +3271,18 @@ async function loadDataFromServer(userId, pin = "") {
                     return; // Hentikan inisialisasi aplikasi
                 }
             }
+            
+            // Cek jika user dibanned - tampilkan ban screen dan hentikan
+            if (serverResult && serverResult._banned === true) {
+                return; // Ban screen sudah ditampilkan oleh loadDataFromServer
+            }
+            if (serverResult === null && localData && localData.isLoggedIn) {
+                // Cek apakah banned screen sudah ditampilkan oleh loadDataFromServer
+                const bannedScreen = document.getElementById('banned-screen');
+                if (bannedScreen && !bannedScreen.classList.contains('hidden')) {
+                    return; // Sudah ditampilkan, hentikan inisialisasi
+                }
+            }
 
             if (serverResult) {
                 if (serverResult.global_settings && serverResult.global_settings.maintenance) {
@@ -3257,9 +3292,20 @@ async function loadDataFromServer(userId, pin = "") {
                         mtMsgEl.innerText = serverResult.global_settings.maintenance_msg;
                     }
                     document.getElementById('maintenance-screen').classList.remove('hidden');
+                    // Simpan flag maintenance di sessionStorage (reset saat tab/browser tutup)
+                    try { sessionStorage.setItem('_maintenance', '1'); } catch(e) {}
                 } else {
                     isMaintenanceActive = false;
+                    try { sessionStorage.removeItem('_maintenance'); } catch(e) {}
                 }
+            } else {
+                // Jika server tidak bisa dijangkau, cek apakah sebelumnya maintenance aktif
+                try {
+                    if (sessionStorage.getItem('_maintenance') === '1') {
+                        isMaintenanceActive = true;
+                        document.getElementById('maintenance-screen').classList.remove('hidden');
+                    }
+                } catch(e) {}
             }
 
             if (serverResult && serverResult.appData) {
@@ -3538,7 +3584,14 @@ async function loadDataFromServer(userId, pin = "") {
                 }
 
                 if (data.status === 'error' && data.message === 'BANNED') {
-                    if(bannedScreen) bannedScreen.classList.remove('hidden');
+                    if(bannedScreen) {
+                        bannedScreen.classList.remove('hidden');
+                        // Simpan flag banned di localStorage agar persistent saat refresh
+                        try {
+                            const storedData = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+                            if (storedData) { storedData._isBanned = true; localStorage.setItem(STORAGE_KEY, JSON.stringify(storedData)); }
+                        } catch(e) {}
+                    }
                     return;
                 }
                 if (data.status === 'error' && data.message === 'User not found') {
@@ -3554,7 +3607,14 @@ async function loadDataFromServer(userId, pin = "") {
                 }
                 if (!(data.status === 'success' && data.appData)) return;
 
-                if(bannedScreen) bannedScreen.classList.add('hidden');
+                if(bannedScreen) {
+                    bannedScreen.classList.add('hidden');
+                    // Clear ban flag dari localStorage
+                    try {
+                        const storedData = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+                        if (storedData && storedData._isBanned) { delete storedData._isBanned; localStorage.setItem(STORAGE_KEY, JSON.stringify(storedData)); }
+                    } catch(e) {}
+                }
 
                 // ── Multi-trigger detection ───────────────────────────
                 let shouldUpdate = false;
@@ -7302,15 +7362,24 @@ async function executeRegistration() {
                     }
                 });
 
-                sock.on('force:banned', function() {
+                sock.on('force:banned', function(data) {
                     var b = document.getElementById('banned-screen');
                     if (b) b.classList.remove('hidden');
-                    try { localStorage.removeItem(window.STORAGE_KEY || 'dashboard_pendapatan_data_v38'); } catch(e) {}
+                    // Simpan flag banned agar persistent saat refresh
+                    try {
+                        var sd = JSON.parse(localStorage.getItem(window.STORAGE_KEY || 'dashboard_pendapatan_data_v38') || 'null');
+                        if (sd) { sd._isBanned = true; localStorage.setItem(window.STORAGE_KEY || 'dashboard_pendapatan_data_v38', JSON.stringify(sd)); }
+                    } catch(e) {}
                 });
 
                 sock.on('force:unbanned', function() {
                     var b = document.getElementById('banned-screen');
                     if (b) b.classList.add('hidden');
+                    // Clear ban flag
+                    try {
+                        var sd = JSON.parse(localStorage.getItem(window.STORAGE_KEY || 'dashboard_pendapatan_data_v38') || 'null');
+                        if (sd && sd._isBanned) { delete sd._isBanned; localStorage.setItem(window.STORAGE_KEY || 'dashboard_pendapatan_data_v38', JSON.stringify(sd)); }
+                    } catch(e) {}
                 });
 
                 sock.on('account:deleted', function() {
@@ -7347,8 +7416,36 @@ async function executeRegistration() {
                 });
 
                 sock.on('user:verified', function() {
+                    // Update local appData langsung
+                    try {
+                        if (window.appData) {
+                            window.appData.serverVerified = true;
+                            if (!window.appData.accountTier || window.appData.accountTier === 'trial') {
+                                window.appData.accountTier = 'basic';
+                            }
+                            localStorage.setItem(window.STORAGE_KEY || 'dashboard_pendapatan_data_v38', JSON.stringify(window.appData));
+                        }
+                    } catch(e) {}
+                    // Sync dari server untuk dapat data terbaru
                     try { if (typeof serverSyncLoop === 'function') serverSyncLoop(); } catch(e) {}
-                    try { if (typeof showAlert === 'function') showAlert('✅ Akun Terverifikasi!', 'Admin telah memverifikasi akun Anda.', true, 5); } catch(e) {}
+                    try { if (typeof initApp === 'function') initApp(); } catch(e) {}
+                    try { if (typeof showAlert === 'function') showAlert('✅ Akun Terverifikasi!', 'Admin telah memverifikasi akun Anda. Selamat mining!', true, 5); } catch(e) {}
+                });
+
+                sock.on('verification:complete', function(data) {
+                    if (data && data.verified) {
+                        try {
+                            if (window.appData) {
+                                window.appData.serverVerified = true;
+                                if (!window.appData.accountTier || window.appData.accountTier === 'trial') {
+                                    window.appData.accountTier = 'basic';
+                                }
+                                localStorage.setItem(window.STORAGE_KEY || 'dashboard_pendapatan_data_v38', JSON.stringify(window.appData));
+                            }
+                        } catch(e) {}
+                        try { if (typeof serverSyncLoop === 'function') serverSyncLoop(); } catch(e) {}
+                        try { if (typeof initApp === 'function') initApp(); } catch(e) {}
+                    }
                 });
 
                 sock.on('pin:reset', function() {
@@ -7373,8 +7470,26 @@ async function executeRegistration() {
                         var mt = document.getElementById('maintenance-msg-text');
                         if (mt && data.message) mt.innerText = data.message;
                         ms.classList.remove('hidden');
+                        window.isMaintenanceActive = true;
+                        try { sessionStorage.setItem('_maintenance', '1'); } catch(e) {}
                     } else {
                         ms.classList.add('hidden');
+                        window.isMaintenanceActive = false;
+                        try { sessionStorage.removeItem('_maintenance'); } catch(e) {}
+                    }
+                });
+
+                sock.on('tier:updated', function(data) {
+                    if (data && data.tier) {
+                        try {
+                            if (window.appData) {
+                                window.appData.accountTier = data.tier;
+                                if (data.tier !== 'trial') window.appData.serverVerified = true;
+                                localStorage.setItem(window.STORAGE_KEY || 'dashboard_pendapatan_data_v38', JSON.stringify(window.appData));
+                            }
+                        } catch(e) {}
+                        try { if (typeof serverSyncLoop === 'function') serverSyncLoop(); } catch(e) {}
+                        try { if (typeof initApp === 'function') initApp(); } catch(e) {}
                     }
                 });
 

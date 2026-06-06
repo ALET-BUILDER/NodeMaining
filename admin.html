@@ -622,32 +622,15 @@
                 <button onclick="resetUserPin()" class="action-btn py-3 bg-amber-500/15 border border-amber-500/30 text-amber-400 font-black text-xs rounded-xl hover:bg-amber-500/25 transition-all">🔑 Reset PIN</button>
                 <button onclick="deleteUser()" class="action-btn py-3 bg-slate-800 border border-slate-700 text-slate-300 font-black text-xs rounded-xl hover:bg-slate-700 transition-all">🗑️ Hapus Akun</button>
             </div>
+            <!-- Tier & Verification -->
+            <div class="grid grid-cols-2 gap-2 mt-1">
+                <button onclick="changeUserTier('basic')" class="action-btn py-2.5 bg-slate-800 border border-slate-700 text-slate-300 font-black text-xs rounded-xl hover:bg-slate-700 transition-all">📊 Set Basic</button>
+                <button onclick="changeUserTier('pro')" class="action-btn py-2.5 bg-blue-500/15 border border-blue-500/30 text-blue-400 font-black text-xs rounded-xl hover:bg-blue-500/25 transition-all">⚡ Set PRO</button>
+                <button onclick="changeUserTier('vip')" class="action-btn py-2.5 bg-amber-500/15 border border-amber-500/30 text-amber-400 font-black text-xs rounded-xl hover:bg-amber-500/25 transition-all">👑 Set VIP</button>
+                <button onclick="toggleUserVerification()" id="modal-verify-btn" class="action-btn py-2.5 bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-black text-xs rounded-xl hover:bg-emerald-500/25 transition-all">✅ Verifikasi Ulang</button>
+            </div>
         </div>
     </div>
-
-<!-- Actions -->
-<div class="grid grid-cols-2 gap-2 mb-2">
-    <button id="modal-ban-btn" onclick="toggleBanUser()" class="action-btn py-3 bg-rose-500/15 border border-rose-500/30 text-rose-400 font-black text-xs rounded-xl hover:bg-rose-500/25 transition-all">🚫 Ban User</button>
-    <button onclick="verifyUserManual()" class="action-btn py-3 bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-black text-xs rounded-xl hover:bg-emerald-500/25 transition-all">✅ Verif. Manual</button>
-    <button onclick="resetUserPin()" class="action-btn py-3 bg-amber-500/15 border border-amber-500/30 text-amber-400 font-black text-xs rounded-xl hover:bg-amber-500/25 transition-all">🔑 Reset PIN</button>
-    <button onclick="deleteUser()" class="action-btn py-3 bg-slate-800 border border-slate-700 text-slate-300 font-black text-xs rounded-xl hover:bg-slate-700 transition-all">🗑️ Hapus Akun</button>
-</div>
-
-<!-- BARIS BARU: Tombol Ubah Tier & Verifikasi Paksa -->
-<div class="grid grid-cols-2 gap-2 mt-2">
-    <button onclick="changeUserTier('basic')" class="action-btn py-2.5 bg-slate-800 border border-slate-700 text-slate-300 font-black text-xs rounded-xl hover:bg-slate-700 transition-all">
-        📊 Set Basic
-    </button>
-    <button onclick="changeUserTier('pro')" class="action-btn py-2.5 bg-blue-500/15 border border-blue-500/30 text-blue-400 font-black text-xs rounded-xl hover:bg-blue-500/25 transition-all">
-        ⚡ Set PRO
-    </button>
-    <button onclick="changeUserTier('vip')" class="action-btn py-2.5 bg-amber-500/15 border border-amber-500/30 text-amber-400 font-black text-xs rounded-xl hover:bg-amber-500/25 transition-all">
-        👑 Set VIP
-    </button>
-    <button onclick="toggleUserVerification()" id="modal-verify-btn" class="action-btn py-2.5 bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-black text-xs rounded-xl hover:bg-emerald-500/25 transition-all">
-        ✅ Verifikasi Ulang
-    </button>
-</div>
 
     <!-- ════ PAYMENT DETAIL MODAL ════ -->
     <div id="payment-detail-modal" class="fixed inset-0 bg-slate-950/90 hidden z-[200] flex items-end justify-center p-4 backdrop-blur-md">

@@ -378,22 +378,30 @@ app.post('/api', async (req, res) => {
       
       if (user.is_banned) {
         console.log('  ❌ User is banned:', userId);
-        return res.json({ status: 'error', message: 'BANNED' });
+        // Always return BANNED - no bypass possible
+        return res.json({ status: 'error', message: 'BANNED', reason: user.admin_note || 'Akun Anda telah dibanned oleh admin.' });
       }
       
-      const pinValid = bcrypt.compareSync(pinCode, user.pin_hash);
-      if (!pinValid) {
-        console.log('  ❌ Wrong PIN for user:', userId);
-        return res.json({ status: 'error', message: 'wrong_pin' });
+      // Check maintenance - banned users still get BANNED response (not maintenance)
+      const maintenanceActive = getConfig('maintenance') === 'true';
+      
+      // If pinCode is provided, it's a login attempt - validate PIN
+      // If no pinCode, it's a background sync (serverSyncLoop) - just check ban status
+      if (pinCode) {
+        const pinValid = bcrypt.compareSync(pinCode, user.pin_hash);
+        if (!pinValid) {
+          console.log('  ❌ Wrong PIN for user:', userId);
+          return res.json({ status: 'error', message: 'wrong_pin' });
+        }
       }
       
-      console.log('  ✅ Login successful:', userId);
+      console.log('  ✅ Login/sync successful:', userId);
       
       updateUser(userId, { last_active: Math.floor(Date.now() / 1000) });
       
       const transactions = getUserTransactions(userId, 50);
       
-      const maintenance = getConfig('maintenance') === 'true';
+      const maintenance = maintenanceActive;
       const maintenanceMsg = getConfig('maintenance_msg') || '';
       
       const referrals = getReferrals(userId);
