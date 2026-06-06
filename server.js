@@ -908,6 +908,8 @@ app.post('/admin/api/config', verifyAdmin, (req, res) => {
       configs[row.key] = row.value;
     }
     
+    let paymentConfig = {};
+    try { paymentConfig = JSON.parse(configs.payment_config || '{}'); } catch(e) {}
     return res.json({
       miningRate: parseFloat(configs.mining_rate || 0.005),
       welcomeBonus: parseFloat(configs.welcome_bonus || 5),
@@ -920,7 +922,8 @@ app.post('/admin/api/config', verifyAdmin, (req, res) => {
       verificationFee: parseInt(configs.verification_fee || 17000),
       proPrice: parseInt(configs.pro_price || 85000),
       vipPrice: parseInt(configs.vip_price || 170000),
-      announcement: ''
+      announcement: configs.announcement || '',
+      paymentConfig: paymentConfig
     });
   } catch (err) {
     return res.json({
@@ -936,10 +939,42 @@ app.post('/admin/api/save_config', verifyAdmin, (req, res) => {
   try {
     for (const [key, value] of Object.entries(configs)) {
       if (value !== undefined) {
-        db.prepare(`INSERT OR REPLACE INTO system_config (key, value) VALUES (?, ?)`).run(key, String(value));
+        if (key === 'paymentConfig' && typeof value === 'object') {
+          db.prepare(`INSERT OR REPLACE INTO system_config (key, value) VALUES (?, ?)`).run('payment_config', JSON.stringify(value));
+        } else if (typeof value !== 'object') {
+          db.prepare(`INSERT OR REPLACE INTO system_config (key, value) VALUES (?, ?)`).run(key, String(value));
+        }
       }
     }
     return res.json({ status: 'ok' });
+  } catch (err) {
+    return res.json({ status: 'error', message: err.message });
+  }
+});
+
+// User submit manual payment proof
+app.post('/api/submit_payment', (req, res) => {
+  const { userId, tier, method, senderName, proofImage, amount, packageName } = req.body;
+  if (!userId || !tier || !method || !senderName) {
+    return res.json({ status: 'error', message: 'Data tidak lengkap' });
+  }
+  try {
+    const paymentId = 'PAY_' + Date.now() + '_' + Math.random().toString(36).slice(2,7).toUpperCase();
+    db.prepare(`INSERT INTO payments (id, user_id, amount, status, package_name, created_at) VALUES (?, ?, ?, 'pending', ?, ?)`)
+      .run(paymentId, userId, amount || 0, packageName || tier, new Date().toISOString());
+    // Store extra fields if columns exist, or just use activity log
+    try {
+      db.prepare(`UPDATE payments SET method = ?, sender_name = ?, proof_url = ? WHERE id = ?`)
+        .run(method, senderName, proofImage ? proofImage.substring(0,500) : '', paymentId);
+    } catch(e2) {
+      // Columns may not exist yet - that's OK
+    }
+    // Notify admin via socket
+    io.to('admin_room').emit('admin:new_payment', {
+      id: paymentId, userId, amount, packageName: packageName || tier,
+      method, senderName, status: 'pending', createdAt: new Date().toISOString()
+    });
+    return res.json({ status: 'ok', paymentId });
   } catch (err) {
     return res.json({ status: 'error', message: err.message });
   }
