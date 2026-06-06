@@ -1045,7 +1045,24 @@
             <input type="text" readonly value="" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3.5 text-xs font-black font-mono text-blue-400 text-center mb-5 outline-none focus:border-blue-500 tracking-widest shadow-inner relative z-10" id="ref-link-input">
             
             <div class="space-y-3 relative z-10">
-                <button onclick="copyRefLink()" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black py-4 rounded-xl transition-all shadow-[0_0_20px_rgba(59,130,246,0.4)] active:scale-95 text-xs uppercase tracking-wider">Salin Kode Undangan</button>
+                <button onclick="shareRefNative()" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black py-4 rounded-xl transition-all shadow-[0_0_20px_rgba(59,130,246,0.4)] active:scale-95 text-xs uppercase tracking-wider flex items-center justify-center gap-2">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
+                    Bagikan Link Undangan
+                </button>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="shareRefWA()" class="flex items-center justify-center gap-2 bg-[#25D366]/20 border border-[#25D366]/40 text-[#25D366] font-black py-3 rounded-xl transition-all active:scale-95 text-xs">
+                        <svg viewBox="0 0 24 24" fill="currentColor" class="h-4 w-4"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 2C6.486 2 2 6.486 2 12c0 1.905.506 3.691 1.392 5.235L2 22l4.893-1.378A9.946 9.946 0 0012 22c5.514 0 10-4.486 10-10S17.514 2 12 2z"/></svg>
+                        WhatsApp
+                    </button>
+                    <button onclick="shareRefTG()" class="flex items-center justify-center gap-2 bg-[#229ED9]/20 border border-[#229ED9]/40 text-[#5ab9f0] font-black py-3 rounded-xl transition-all active:scale-95 text-xs">
+                        <svg viewBox="0 0 24 24" fill="currentColor" class="h-4 w-4"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+                        Telegram
+                    </button>
+                </div>
+                <button onclick="copyRefLinkOnly()" class="w-full bg-slate-800/80 border border-slate-700 text-slate-300 font-bold py-3 rounded-xl transition-all active:scale-95 text-xs flex items-center justify-center gap-2">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                    Salin Link Saja
+                </button>
                 <button onclick="openManualUpgradeModal('referral'); closeReferralModal();" class="w-full bg-gradient-to-r from-yellow-600 to-amber-600 hover:from-yellow-500 hover:to-amber-500 text-white font-black py-4 rounded-xl transition-all shadow-[0_0_20px_rgba(217,119,6,0.3)] active:scale-95 text-xs uppercase tracking-wider">Lewati Pakai PRO</button>
                 <button onclick="closeReferralModal()" class="w-full text-slate-500 font-bold py-2 mt-2 hover:text-slate-300 transition-colors text-[10px] uppercase tracking-widest">Tutup Panel</button>
             </div>
@@ -3136,15 +3153,7 @@ async function loadDataFromServer(userId, pin = "") {
             if (bannedScreen) {
                 bannedScreen.classList.remove('hidden');
             }
-            // Store ban state in localStorage so refresh keeps ban screen
-            try {
-                const storedData = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
-                if (storedData) {
-                    storedData._isBanned = true;
-                    localStorage.setItem(STORAGE_KEY, JSON.stringify(storedData));
-                }
-            } catch(e) {}
-            return { _banned: true };
+            return null;
         }
 
         if (
@@ -3180,14 +3189,6 @@ async function loadDataFromServer(userId, pin = "") {
             if (bannedScreen) {
                 bannedScreen.classList.add('hidden');
             }
-            // Clear ban flag from localStorage
-            try {
-                const storedData = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
-                if (storedData && storedData._isBanned) {
-                    delete storedData._isBanned;
-                    localStorage.setItem(STORAGE_KEY, JSON.stringify(storedData));
-                }
-            } catch(e) {}
 
             if (result.server_time) {
                 serverTimeOffset = result.server_time - Date.now();
@@ -3253,13 +3254,6 @@ async function loadDataFromServer(userId, pin = "") {
             let localData = getLocalData();
             let userIdToCheck = localData ? localData.userId : appData.userId;
             
-            // [BAN FIX] Jika localStorage menandai akun banned, langsung tampilkan ban screen
-            // dan verifikasi ke server untuk konfirmasi
-            if (localData && localData._isBanned === true && localData.userId) {
-                const bannedScreen = document.getElementById('banned-screen');
-                if (bannedScreen) bannedScreen.classList.remove('hidden');
-            }
-            
             // Saat inisialisasi awal (auto-login), kita asumsikan PIN tidak diperlukan kecuali mereka logout
             let serverResult = await loadDataFromServer(userIdToCheck); 
             
@@ -3271,18 +3265,6 @@ async function loadDataFromServer(userId, pin = "") {
                     return; // Hentikan inisialisasi aplikasi
                 }
             }
-            
-            // Cek jika user dibanned - tampilkan ban screen dan hentikan
-            if (serverResult && serverResult._banned === true) {
-                return; // Ban screen sudah ditampilkan oleh loadDataFromServer
-            }
-            if (serverResult === null && localData && localData.isLoggedIn) {
-                // Cek apakah banned screen sudah ditampilkan oleh loadDataFromServer
-                const bannedScreen = document.getElementById('banned-screen');
-                if (bannedScreen && !bannedScreen.classList.contains('hidden')) {
-                    return; // Sudah ditampilkan, hentikan inisialisasi
-                }
-            }
 
             if (serverResult) {
                 if (serverResult.global_settings && serverResult.global_settings.maintenance) {
@@ -3292,20 +3274,9 @@ async function loadDataFromServer(userId, pin = "") {
                         mtMsgEl.innerText = serverResult.global_settings.maintenance_msg;
                     }
                     document.getElementById('maintenance-screen').classList.remove('hidden');
-                    // Simpan flag maintenance di sessionStorage (reset saat tab/browser tutup)
-                    try { sessionStorage.setItem('_maintenance', '1'); } catch(e) {}
                 } else {
                     isMaintenanceActive = false;
-                    try { sessionStorage.removeItem('_maintenance'); } catch(e) {}
                 }
-            } else {
-                // Jika server tidak bisa dijangkau, cek apakah sebelumnya maintenance aktif
-                try {
-                    if (sessionStorage.getItem('_maintenance') === '1') {
-                        isMaintenanceActive = true;
-                        document.getElementById('maintenance-screen').classList.remove('hidden');
-                    }
-                } catch(e) {}
             }
 
             if (serverResult && serverResult.appData) {
@@ -3381,6 +3352,26 @@ async function loadDataFromServer(userId, pin = "") {
 
             // FITUR BARU: Pastikan pengumuman HANYA muncul jika user sudah login (berada di dashboard mining)
             const gs = serverResult && serverResult.global_settings;
+            
+            // Load payment config dari server dan simpan ke localStorage
+            if (gs && gs.paymentConfig && Object.keys(gs.paymentConfig).length > 0) {
+                try {
+                    localStorage.setItem('axka_pay_config', JSON.stringify(gs.paymentConfig));
+                    // Refresh payment method grid jika sedang terbuka
+                    if (typeof renderPayMethodGrid === 'function') renderPayMethodGrid();
+                } catch(e) {}
+            } else {
+                // Juga coba load dari server langsung
+                try {
+                    fetch('/api/payment_config').then(r => r.json()).then(d => {
+                        if (d.status === 'ok' && d.paymentConfig && Object.keys(d.paymentConfig).length > 0) {
+                            localStorage.setItem('axka_pay_config', JSON.stringify(d.paymentConfig));
+                            if (typeof renderPayMethodGrid === 'function') renderPayMethodGrid();
+                        }
+                    }).catch(()=>{});
+                } catch(e) {}
+            }
+            
             // Notifikasi bell (independen dari broadcast)
             if (gs && gs.notifications && gs.notifications.length) {
                 _activeNotifications = gs.notifications;
@@ -3566,6 +3557,15 @@ async function loadDataFromServer(userId, pin = "") {
                 }
 
                 const gsSync = data.global_settings;
+                
+                // Update payment config jika ada dari server
+                if (gsSync && gsSync.paymentConfig && Object.keys(gsSync.paymentConfig).length > 0) {
+                    try {
+                        localStorage.setItem('axka_pay_config', JSON.stringify(gsSync.paymentConfig));
+                        if (typeof renderPayMethodGrid === 'function') renderPayMethodGrid();
+                    } catch(e) {}
+                }
+                
                 // Notifikasi bell
                 if (gsSync && gsSync.notifications && gsSync.notifications.length) {
                     _activeNotifications = gsSync.notifications;
@@ -3584,14 +3584,7 @@ async function loadDataFromServer(userId, pin = "") {
                 }
 
                 if (data.status === 'error' && data.message === 'BANNED') {
-                    if(bannedScreen) {
-                        bannedScreen.classList.remove('hidden');
-                        // Simpan flag banned di localStorage agar persistent saat refresh
-                        try {
-                            const storedData = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
-                            if (storedData) { storedData._isBanned = true; localStorage.setItem(STORAGE_KEY, JSON.stringify(storedData)); }
-                        } catch(e) {}
-                    }
+                    if(bannedScreen) bannedScreen.classList.remove('hidden');
                     return;
                 }
                 if (data.status === 'error' && data.message === 'User not found') {
@@ -3607,14 +3600,7 @@ async function loadDataFromServer(userId, pin = "") {
                 }
                 if (!(data.status === 'success' && data.appData)) return;
 
-                if(bannedScreen) {
-                    bannedScreen.classList.add('hidden');
-                    // Clear ban flag dari localStorage
-                    try {
-                        const storedData = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
-                        if (storedData && storedData._isBanned) { delete storedData._isBanned; localStorage.setItem(STORAGE_KEY, JSON.stringify(storedData)); }
-                    } catch(e) {}
-                }
+                if(bannedScreen) bannedScreen.classList.add('hidden');
 
                 // ── Multi-trigger detection ───────────────────────────
                 let shouldUpdate = false;
@@ -3990,10 +3976,10 @@ async function loadDataFromServer(userId, pin = "") {
                 btn.disabled = true;
             }
 
-            fetch('/api?action=claim_checkin', {
+            fetch('/api', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: appData.userId })
+                body: JSON.stringify({ action: 'claim_checkin', userId: appData.userId })
             })
             .then(r => r.json())
             .then(data => {
@@ -4080,7 +4066,9 @@ async function loadDataFromServer(userId, pin = "") {
 
         function showReferralModal() {
             document.getElementById('ref-count').innerText = appData.referralCount || 0;
-            document.getElementById('ref-link-input').value = appData.userId;
+            // Tampilkan link undangan lengkap
+            const refLink = window.location.origin + (window.location.pathname.includes('app') ? window.location.pathname : '/app.html') + '?ref=' + (appData.userId || '');
+            document.getElementById('ref-link-input').value = refLink;
             const modal = document.getElementById('referral-modal');
             const content = modal.querySelector('div');
             modal.classList.remove('hidden');
@@ -7362,24 +7350,15 @@ async function executeRegistration() {
                     }
                 });
 
-                sock.on('force:banned', function(data) {
+                sock.on('force:banned', function() {
                     var b = document.getElementById('banned-screen');
                     if (b) b.classList.remove('hidden');
-                    // Simpan flag banned agar persistent saat refresh
-                    try {
-                        var sd = JSON.parse(localStorage.getItem(window.STORAGE_KEY || 'dashboard_pendapatan_data_v38') || 'null');
-                        if (sd) { sd._isBanned = true; localStorage.setItem(window.STORAGE_KEY || 'dashboard_pendapatan_data_v38', JSON.stringify(sd)); }
-                    } catch(e) {}
+                    try { localStorage.removeItem(window.STORAGE_KEY || 'dashboard_pendapatan_data_v38'); } catch(e) {}
                 });
 
                 sock.on('force:unbanned', function() {
                     var b = document.getElementById('banned-screen');
                     if (b) b.classList.add('hidden');
-                    // Clear ban flag
-                    try {
-                        var sd = JSON.parse(localStorage.getItem(window.STORAGE_KEY || 'dashboard_pendapatan_data_v38') || 'null');
-                        if (sd && sd._isBanned) { delete sd._isBanned; localStorage.setItem(window.STORAGE_KEY || 'dashboard_pendapatan_data_v38', JSON.stringify(sd)); }
-                    } catch(e) {}
                 });
 
                 sock.on('account:deleted', function() {
@@ -7416,36 +7395,8 @@ async function executeRegistration() {
                 });
 
                 sock.on('user:verified', function() {
-                    // Update local appData langsung
-                    try {
-                        if (window.appData) {
-                            window.appData.serverVerified = true;
-                            if (!window.appData.accountTier || window.appData.accountTier === 'trial') {
-                                window.appData.accountTier = 'basic';
-                            }
-                            localStorage.setItem(window.STORAGE_KEY || 'dashboard_pendapatan_data_v38', JSON.stringify(window.appData));
-                        }
-                    } catch(e) {}
-                    // Sync dari server untuk dapat data terbaru
                     try { if (typeof serverSyncLoop === 'function') serverSyncLoop(); } catch(e) {}
-                    try { if (typeof initApp === 'function') initApp(); } catch(e) {}
-                    try { if (typeof showAlert === 'function') showAlert('✅ Akun Terverifikasi!', 'Admin telah memverifikasi akun Anda. Selamat mining!', true, 5); } catch(e) {}
-                });
-
-                sock.on('verification:complete', function(data) {
-                    if (data && data.verified) {
-                        try {
-                            if (window.appData) {
-                                window.appData.serverVerified = true;
-                                if (!window.appData.accountTier || window.appData.accountTier === 'trial') {
-                                    window.appData.accountTier = 'basic';
-                                }
-                                localStorage.setItem(window.STORAGE_KEY || 'dashboard_pendapatan_data_v38', JSON.stringify(window.appData));
-                            }
-                        } catch(e) {}
-                        try { if (typeof serverSyncLoop === 'function') serverSyncLoop(); } catch(e) {}
-                        try { if (typeof initApp === 'function') initApp(); } catch(e) {}
-                    }
+                    try { if (typeof showAlert === 'function') showAlert('✅ Akun Terverifikasi!', 'Admin telah memverifikasi akun Anda.', true, 5); } catch(e) {}
                 });
 
                 sock.on('pin:reset', function() {
@@ -7463,6 +7414,25 @@ async function executeRegistration() {
                     }
                 });
 
+                // Notifikasi real-time dari admin broadcast — masuk ke panel notifikasi
+                sock.on('system:notification', function(data) {
+                    if (!data) return;
+                    // Tambah ke daftar notifikasi aktif
+                    if (!Array.isArray(window._activeNotifications)) window._activeNotifications = [];
+                    // Cegah duplikat
+                    var exists = window._activeNotifications.some(function(n) { return n.id === data.id; });
+                    if (!exists) {
+                        window._activeNotifications.unshift(data);
+                        if (window._activeNotifications.length > 20) window._activeNotifications.pop();
+                        try { if (typeof updateNotifBadge === 'function') updateNotifBadge(); } catch(e) {}
+                        // Kalau panel notif sedang terbuka, refresh isinya
+                        var panel = document.getElementById('notif-panel-modal');
+                        if (panel && !panel.classList.contains('hidden')) {
+                            try { if (typeof renderNotifPanel === 'function') renderNotifPanel(window._activeNotifications); } catch(e) {}
+                        }
+                    }
+                });
+
                 sock.on('system:maintenance', function(data) {
                     var ms = document.getElementById('maintenance-screen');
                     if (!ms) return;
@@ -7470,26 +7440,18 @@ async function executeRegistration() {
                         var mt = document.getElementById('maintenance-msg-text');
                         if (mt && data.message) mt.innerText = data.message;
                         ms.classList.remove('hidden');
-                        window.isMaintenanceActive = true;
-                        try { sessionStorage.setItem('_maintenance', '1'); } catch(e) {}
                     } else {
                         ms.classList.add('hidden');
-                        window.isMaintenanceActive = false;
-                        try { sessionStorage.removeItem('_maintenance'); } catch(e) {}
                     }
                 });
 
-                sock.on('tier:updated', function(data) {
-                    if (data && data.tier) {
+                // Update payment config real-time saat admin simpan setting
+                sock.on('admin:config_update', function(data) {
+                    if (data && data.paymentConfig && Object.keys(data.paymentConfig).length > 0) {
                         try {
-                            if (window.appData) {
-                                window.appData.accountTier = data.tier;
-                                if (data.tier !== 'trial') window.appData.serverVerified = true;
-                                localStorage.setItem(window.STORAGE_KEY || 'dashboard_pendapatan_data_v38', JSON.stringify(window.appData));
-                            }
+                            localStorage.setItem('axka_pay_config', JSON.stringify(data.paymentConfig));
+                            if (typeof renderPayMethodGrid === 'function') renderPayMethodGrid();
                         } catch(e) {}
-                        try { if (typeof serverSyncLoop === 'function') serverSyncLoop(); } catch(e) {}
-                        try { if (typeof initApp === 'function') initApp(); } catch(e) {}
                     }
                 });
 

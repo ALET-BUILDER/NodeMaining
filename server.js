@@ -267,9 +267,11 @@ function verifyAdminToken(token) {
 
 // ============ MAIN API ============
 app.post('/api', async (req, res) => {
-  console.log('📡 API called:', req.body.action);
+  // Support action from both body AND query string (e.g. /api?action=claim_checkin)
+  const action = req.body.action || req.query.action;
+  console.log('📡 API called:', action);
   
-  const { action, userId, pinCode, appData, isRegister, amount, method, recipientName, email, telegram, refCode } = req.body;
+  const { userId, pinCode, appData, isRegister, amount, method, recipientName, email, telegram, refCode } = req.body;
   
   // REGISTER
   if (action === 'save_data' && isRegister === true) {
@@ -378,31 +380,31 @@ app.post('/api', async (req, res) => {
       
       if (user.is_banned) {
         console.log('  ❌ User is banned:', userId);
-        // Always return BANNED - no bypass possible
-        return res.json({ status: 'error', message: 'BANNED', reason: user.admin_note || 'Akun Anda telah dibanned oleh admin.' });
+        return res.json({ status: 'error', message: 'BANNED' });
       }
       
-      // Check maintenance - banned users still get BANNED response (not maintenance)
-      const maintenanceActive = getConfig('maintenance') === 'true';
-      
-      // If pinCode is provided, it's a login attempt - validate PIN
-      // If no pinCode, it's a background sync (serverSyncLoop) - just check ban status
-      if (pinCode) {
-        const pinValid = bcrypt.compareSync(pinCode, user.pin_hash);
-        if (!pinValid) {
-          console.log('  ❌ Wrong PIN for user:', userId);
-          return res.json({ status: 'error', message: 'wrong_pin' });
-        }
+      const pinValid = bcrypt.compareSync(pinCode, user.pin_hash);
+      if (!pinValid) {
+        console.log('  ❌ Wrong PIN for user:', userId);
+        return res.json({ status: 'error', message: 'wrong_pin' });
       }
       
-      console.log('  ✅ Login/sync successful:', userId);
+      console.log('  ✅ Login successful:', userId);
       
       updateUser(userId, { last_active: Math.floor(Date.now() / 1000) });
       
       const transactions = getUserTransactions(userId, 50);
       
-      const maintenance = maintenanceActive;
+      const maintenance = getConfig('maintenance') === 'true';
       const maintenanceMsg = getConfig('maintenance_msg') || '';
+      
+      // Load notifications
+      let notifications = [];
+      try { notifications = JSON.parse(getConfig('notifications') || '[]'); } catch(e) {}
+      
+      // Load payment config
+      let paymentConfig = {};
+      try { paymentConfig = JSON.parse(getConfig('payment_config') || '{}'); } catch(e) {}
       
       const referrals = getReferrals(userId);
       
@@ -436,7 +438,8 @@ app.post('/api', async (req, res) => {
           maintenance_msg: maintenanceMsg,
           broadcast_active: false,
           broadcast_msg: '',
-          notifications: []
+          notifications: notifications,
+          paymentConfig: paymentConfig
         }
       });
     } catch (err) {
@@ -502,6 +505,7 @@ app.post('/api', async (req, res) => {
       return res.json({
         status: 'success',
         newStreak: streak,
+        day: streak,
         reward: reward,
         isJackpot: isJackpot,
         newBalance: user.balance + reward
@@ -879,10 +883,51 @@ app.post('/admin/api/verify_payment', verifyAdmin, (req, res) => {
   }
 });
 
+// Public payment config (accessible without auth)
+app.get('/api/payment_config', (req, res) => {
+  try {
+    const configs = {};
+    const rows = db.prepare(`SELECT * FROM system_config`).all();
+    for (const row of rows) configs[row.key] = row.value;
+    
+    let paymentConfig = {};
+    try { paymentConfig = JSON.parse(configs.payment_config || '{}'); } catch(e) {}
+    return res.json({ status: 'ok', paymentConfig });
+  } catch(err) {
+    return res.json({ status: 'ok', paymentConfig: {} });
+  }
+});
+
 // Broadcast message
 app.post('/admin/api/broadcast', verifyAdmin, (req, res) => {
   const { message, type } = req.body;
+  
+  // Save broadcast as persistent notification
+  try {
+    let notifications = [];
+    try { notifications = JSON.parse(db.prepare(`SELECT value FROM system_config WHERE key='notifications'`).get()?.value || '[]'); } catch(e) {}
+    const newNotif = {
+      id: Date.now(),
+      title: type === 'warning' ? '⚠️ Peringatan' : type === 'success' ? '✅ Pengumuman' : type === 'maintenance' ? '🔧 Maintenance' : 'ℹ️ Info',
+      message: message,
+      type: type,
+      timestamp: Date.now()
+    };
+    notifications.unshift(newNotif);
+    if (notifications.length > 20) notifications = notifications.slice(0, 20); // max 20 notifs
+    db.prepare(`INSERT OR REPLACE INTO system_config (key, value) VALUES ('notifications', ?)`).run(JSON.stringify(notifications));
+  } catch(e) {}
+  
   io.emit('system:broadcast', { message, type, timestamp: Date.now() });
+  // Also emit new notification for notif panel
+  const broadcastNotif = {
+    id: Date.now(),
+    title: type === 'warning' ? '⚠️ Peringatan' : type === 'success' ? '✅ Pengumuman' : type === 'maintenance' ? '🔧 Maintenance' : 'ℹ️ Info',
+    message: message,
+    type: type,
+    timestamp: Date.now()
+  };
+  io.emit('system:notification', broadcastNotif);
   console.log(`📢 Broadcast sent: ${message}`);
   return res.json({ status: 'ok' });
 });
@@ -1057,6 +1102,14 @@ io.on('connection', (socket) => {
   
   socket.on('admin:force_ban', ({ userId }) => {
     io.to(`user_${userId}`).emit('force:banned', { banned: true });
+  });
+  
+  // Relay config updates to all connected users
+  socket.on('admin:config_update', (data) => {
+    if (socket.isAdmin) {
+      // Broadcast config update to all users (not just admin room)
+      io.emit('admin:config_update', data);
+    }
   });
   
   socket.on('admin:payment_action', ({ paymentId, status, userId }) => {
